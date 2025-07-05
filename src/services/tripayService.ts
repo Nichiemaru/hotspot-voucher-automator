@@ -1,152 +1,145 @@
+import axios from "axios"
+import crypto from "crypto"
+import { logger } from "../utils/logger"
+
 interface TriPayConfig {
-  merchantCode: string;
-  apiKey: string;
-  privateKey: string;
+  merchantCode: string
+  apiKey: string
+  privateKey: string
+  baseUrl: string
 }
 
-interface CreateTransactionRequest {
-  method: string;
-  merchant_ref: string;
-  amount: number;
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string;
+interface CreateTransactionData {
+  method: string
+  merchant_ref: string
+  amount: number
+  customer_name: string
+  customer_email: string
+  customer_phone: string
   order_items: Array<{
-    sku: string;
-    name: string;
-    price: number;
-    quantity: number;
-  }>;
-  return_url: string;
-  expired_time: number;
-}
-
-interface TriPayResponse {
-  success: boolean;
-  message: string;
-  data?: {
-    reference: string;
-    merchant_ref: string;
-    payment_selection_type: string;
-    payment_method: string;
-    payment_name: string;
-    customer_name: string;
-    customer_email: string;
-    customer_phone: string;
-    callback_url: string;
-    return_url: string;
-    amount: number;
-    fee_merchant: number;
-    fee_customer: number;
-    total_fee: number;
-    amount_received: number;
-    pay_code: string;
-    pay_url: string;
-    checkout_url: string;
-    status: string;
-    expired_time: number;
-    order_items: Array<any>;
-    instructions: Array<{
-      title: string;
-      steps: Array<string>;
-    }>;
-    qr_code: string;
-    qr_url: string;
-    created_at: number;
-    updated_at: number;
-  };
+    sku: string
+    name: string
+    price: number
+    quantity: number
+  }>
+  return_url: string
+  expired_time: number
 }
 
 class TriPayService {
-  private config: TriPayConfig;
-  private baseUrl = 'https://tripay.co.id/api';
+  private config: TriPayConfig
 
   constructor() {
-    // Menggunakan kredensial yang sudah diberikan
     this.config = {
-      merchantCode: 'T42431',
-      apiKey: 'WfcMqxIr6QCFzeo5PT1PLKphuhqIqpURV9jGgMlN',
-      privateKey: 'Swu3P-JkeaZ-m9FnW-649ja-H0eD0'
-    };
-  }
-
-  private generateSignature(data: string): string {
-    // Implementasi signature sesuai dokumentasi TriPay
-    const crypto = require('crypto');
-    return crypto
-      .createHmac('sha256', this.config.privateKey)
-      .update(data)
-      .digest('hex');
-  }
-
-  async getPaymentChannels() {
-    try {
-      const response = await fetch(`${this.baseUrl}/merchant/payment-channel`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching payment channels:', error);
-      throw error;
+      merchantCode: process.env.TRIPAY_MERCHANT_CODE || "T42431",
+      apiKey: process.env.TRIPAY_API_KEY || "WfcMqxIr6QCFzeo5PT1PLKphuhqIqpURV9jGgMlN",
+      privateKey: process.env.TRIPAY_PRIVATE_KEY || "Swu3P-JkeaZ-m9FnW-649ja-H0eD0",
+      baseUrl: process.env.TRIPAY_BASE_URL || "https://tripay.co.id/api",
     }
   }
 
-  async createTransaction(data: CreateTransactionRequest): Promise<TriPayResponse> {
+  private generateSignature(data: string): string {
+    return crypto.createHmac("sha256", this.config.privateKey).update(data).digest("hex")
+  }
+
+  async createTransaction(data: CreateTransactionData) {
     try {
-      // Generate signature
-      const payload = JSON.stringify(data);
-      const signature = this.generateSignature(payload);
+      const payload = JSON.stringify(data)
+      const signature = this.generateSignature(payload)
 
-      const response = await fetch(`${this.baseUrl}/transaction/create`, {
-        method: 'POST',
+      const response = await axios.post(`${this.config.baseUrl}/transaction/create`, data, {
         headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`,
-          'Content-Type': 'application/json',
-          'X-Signature': signature
+          Authorization: `Bearer ${this.config.apiKey}`,
+          "Content-Type": "application/json",
+          "X-Signature": signature,
         },
-        body: payload
-      });
+      })
 
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to create transaction');
+      logger.info("TriPay transaction created:", { reference: response.data.data?.reference })
+
+      return {
+        success: true,
+        data: response.data.data,
+        message: "Transaction created successfully",
       }
+    } catch (error: any) {
+      logger.error("TriPay create transaction error:", error.response?.data || error.message)
 
-      return result;
-    } catch (error) {
-      console.error('Error creating transaction:', error);
-      throw error;
+      return {
+        success: false,
+        message: error.response?.data?.message || "Failed to create transaction",
+        data: null,
+      }
     }
   }
 
   async getTransactionDetail(reference: string) {
     try {
-      const response = await fetch(`${this.baseUrl}/transaction/detail?reference=${reference}`, {
-        method: 'GET',
+      const response = await axios.get(`${this.config.baseUrl}/transaction/detail?reference=${reference}`, {
         headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
+          Authorization: `Bearer ${this.config.apiKey}`,
+          "Content-Type": "application/json",
+        },
+      })
 
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching transaction detail:', error);
-      throw error;
+      return {
+        success: true,
+        data: response.data.data,
+        message: "Transaction detail retrieved successfully",
+      }
+    } catch (error: any) {
+      logger.error("TriPay get transaction detail error:", error.response?.data || error.message)
+
+      return {
+        success: false,
+        message: error.response?.data?.message || "Failed to get transaction detail",
+        data: null,
+      }
     }
   }
 
-  validateCallback(callbackData: any, signature: string): boolean {
-    // Validasi signature callback dari TriPay
-    const expectedSignature = this.generateSignature(JSON.stringify(callbackData));
-    return expectedSignature === signature;
+  async getPaymentChannels() {
+    try {
+      const response = await axios.get(`${this.config.baseUrl}/merchant/payment-channel`, {
+        headers: {
+          Authorization: `Bearer ${this.config.apiKey}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      return {
+        success: true,
+        data: response.data.data,
+        message: "Payment channels retrieved successfully",
+      }
+    } catch (error: any) {
+      logger.error("TriPay get payment channels error:", error.response?.data || error.message)
+
+      return {
+        success: false,
+        message: error.response?.data?.message || "Failed to get payment channels",
+        data: null,
+      }
+    }
+  }
+
+  // Method untuk frontend mengambil data paket
+  async getPackages() {
+    try {
+      const response = await fetch("/api/packages")
+      const result = await response.json()
+
+      if (result.success) {
+        return result.data
+      }
+
+      throw new Error(result.message)
+    } catch (error) {
+      console.error("Error fetching packages:", error)
+      return []
+    }
   }
 }
 
-export default new TriPayService();
+const tripayService = new TriPayService()
+export default tripayService

@@ -1,178 +1,199 @@
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import { 
-  Settings, 
-  Wifi, 
-  CreditCard, 
-  Package, 
-  MessageSquare, 
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
+import {
+  Settings,
+  Wifi,
+  CreditCard,
+  Package,
+  MessageSquare,
   Globe,
   TestTube,
   Save,
   Copy,
-  Trash2,
-  Plus,
   Lock,
-  User
-} from "lucide-react";
+  User,
+} from "lucide-react"
 
 interface MikrotikConfig {
-  ipAddress: string;
-  username: string;
-  password: string;
+  ipAddress: string
+  username: string
+  password: string
 }
 
 interface PaymentConfig {
-  merchantCode: string;
-  apiKey: string;
-  privateKey: string;
+  merchantCode: string
+  apiKey: string
+  privateKey: string
 }
 
 interface WhatsAppConfig {
-  endpoint: string;
-  apiKey: string;
+  endpoint: string
+  apiKey: string
 }
 
 interface VoucherProfile {
-  name: string;
-  displayName: string;
-  price: number;
-  enabled: boolean;
+  name: string
+  displayName: string
+  price: number
+  enabled: boolean
 }
 
 interface AdminCredentials {
-  currentPassword: string;
-  newUsername: string;
-  newPassword: string;
-  confirmPassword: string;
+  currentPassword: string
+  newUsername: string
+  newPassword: string
+  confirmPassword: string
 }
 
 const AdminDashboard = () => {
   const [mikrotikConfig, setMikrotikConfig] = useState<MikrotikConfig>({
     ipAddress: "",
     username: "",
-    password: ""
-  });
+    password: "",
+  })
 
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>({
     merchantCode: "T42431",
     apiKey: "WfcMqxIr6QCFzeo5PT1PLKphuhqIqpURV9jGgMlN",
-    privateKey: "Swu3P-JkeaZ-m9FnW-649ja-H0eD0"
-  });
+    privateKey: "Swu3P-JkeaZ-m9FnW-649ja-H0eD0",
+  })
 
   const [whatsappConfig, setWhatsAppConfig] = useState<WhatsAppConfig>({
     endpoint: "",
-    apiKey: ""
-  });
+    apiKey: "",
+  })
 
   const [adminCredentials, setAdminCredentials] = useState<AdminCredentials>({
     currentPassword: "",
     newUsername: "admin",
     newPassword: "",
-    confirmPassword: ""
-  });
+    confirmPassword: "",
+  })
 
   const [profiles, setProfiles] = useState<VoucherProfile[]>([
     { name: "1jam", displayName: "Paket Hemat 1 Jam", price: 2000, enabled: true },
     { name: "6jam", displayName: "Paket Super Cepat 6 Jam", price: 5000, enabled: true },
     { name: "1hari", displayName: "Paket Premium 24 Jam", price: 10000, enabled: true },
-    { name: "1minggu", displayName: "Paket Mingguan", price: 50000, enabled: true }
-  ]);
+    { name: "1minggu", displayName: "Paket Mingguan", price: 50000, enabled: true },
+  ])
 
-  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [isTestingConnection, setIsTestingConnection] = useState(false)
 
   const handleTestMikrotikConnection = async () => {
-    setIsTestingConnection(true);
-    
+    setIsTestingConnection(true)
+
     // Simulate connection test
     setTimeout(() => {
       if (mikrotikConfig.ipAddress && mikrotikConfig.username && mikrotikConfig.password) {
-        toast.success("Koneksi MikroTik berhasil!");
+        toast.success("Koneksi MikroTik berhasil!")
       } else {
-        toast.error("Gagal terhubung ke MikroTik. Periksa konfigurasi Anda.");
+        toast.error("Gagal terhubung ke MikroTik. Periksa konfigurasi Anda.")
       }
-      setIsTestingConnection(false);
-    }, 2000);
-  };
+      setIsTestingConnection(false)
+    }, 2000)
+  }
 
   const handleSaveMikrotikConfig = () => {
-    console.log("Saving MikroTik config:", mikrotikConfig);
-    toast.success("Konfigurasi MikroTik berhasil disimpan!");
-  };
+    console.log("Saving MikroTik config:", mikrotikConfig)
+    toast.success("Konfigurasi MikroTik berhasil disimpan!")
+  }
 
   const handleSavePaymentConfig = () => {
-    console.log("Saving payment config:", paymentConfig);
-    toast.success("Konfigurasi payment gateway berhasil disimpan!");
-  };
+    console.log("Saving payment config:", paymentConfig)
+    toast.success("Konfigurasi payment gateway berhasil disimpan!")
+  }
 
   const handleSaveWhatsAppConfig = () => {
-    console.log("Saving WhatsApp config:", whatsappConfig);
-    toast.success("Konfigurasi WhatsApp berhasil disimpan!");
-  };
+    console.log("Saving WhatsApp config:", whatsappConfig)
+    toast.success("Konfigurasi WhatsApp berhasil disimpan!")
+  }
 
   const handleUpdateProfile = (index: number, updates: Partial<VoucherProfile>) => {
-    const updatedProfiles = [...profiles];
-    updatedProfiles[index] = { ...updatedProfiles[index], ...updates };
-    setProfiles(updatedProfiles);
-  };
+    const updatedProfiles = [...profiles]
+    updatedProfiles[index] = { ...updatedProfiles[index], ...updates }
+    setProfiles(updatedProfiles)
+  }
 
-  const handleSaveProfiles = () => {
-    console.log("Saving profiles:", profiles);
-    toast.success("Konfigurasi paket berhasil disimpan!");
-  };
+  const handleSaveProfiles = async () => {
+    try {
+      // ✅ PERBAIKAN: Kirim ke API backend untuk update database
+      const response = await fetch("/api/packages/bulk-update", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+        },
+        body: JSON.stringify({ packages: profiles }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success("Konfigurasi paket berhasil disimpan!")
+        // Data otomatis tersinkronisasi ke landing page
+      } else {
+        toast.error("Gagal menyimpan konfigurasi!")
+      }
+    } catch (error) {
+      console.error("Error saving profiles:", error)
+      toast.error("Gagal menyimpan konfigurasi!")
+    }
+  }
 
   const handleUpdateAdminCredentials = () => {
     if (!adminCredentials.currentPassword) {
-      toast.error("Password saat ini harus diisi!");
-      return;
+      toast.error("Password saat ini harus diisi!")
+      return
     }
 
     if (adminCredentials.newPassword && adminCredentials.newPassword !== adminCredentials.confirmPassword) {
-      toast.error("Password baru dan konfirmasi password tidak cocok!");
-      return;
+      toast.error("Password baru dan konfirmasi password tidak cocok!")
+      return
     }
 
     // Simulate password verification
     if (adminCredentials.currentPassword !== "admin123") {
-      toast.error("Password saat ini salah!");
-      return;
+      toast.error("Password saat ini salah!")
+      return
     }
 
     console.log("Updating admin credentials:", {
       username: adminCredentials.newUsername,
-      passwordChanged: !!adminCredentials.newPassword
-    });
+      passwordChanged: !!adminCredentials.newPassword,
+    })
 
     // Update localStorage with new credentials if needed
     if (adminCredentials.newPassword) {
       // In a real app, this would be handled by the backend
-      toast.success("Username dan password berhasil diperbarui!");
+      toast.success("Username dan password berhasil diperbarui!")
     } else {
-      toast.success("Username berhasil diperbarui!");
+      toast.success("Username berhasil diperbarui!")
     }
 
     // Reset form
-    setAdminCredentials(prev => ({
+    setAdminCredentials((prev) => ({
       ...prev,
       currentPassword: "",
       newPassword: "",
-      confirmPassword: ""
-    }));
-  };
+      confirmPassword: "",
+    }))
+  }
 
-  const callbackUrl = `${window.location.origin}/callback.php`;
-  const landingPageUrl = window.location.origin;
+  const callbackUrl = `${window.location.origin}/callback.php`
+  const landingPageUrl = window.location.origin
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success("URL berhasil disalin!");
-  };
+    navigator.clipboard.writeText(text)
+    toast.success("URL berhasil disalin!")
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
@@ -184,9 +205,9 @@ const AdminDashboard = () => {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
               <p className="text-gray-600">Kelola konfigurasi sistem voucher hotspot</p>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={() => window.open('/', '_blank')}
+            <Button
+              variant="outline"
+              onClick={() => window.open("/", "_blank")}
               className="flex items-center space-x-2"
             >
               <Globe className="h-4 w-4" />
@@ -206,14 +227,8 @@ const AdminDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <code className="text-sm bg-white/20 px-2 py-1 rounded truncate flex-1 mr-2">
-                  {landingPageUrl}
-                </code>
-                <Button 
-                  size="sm" 
-                  variant="secondary"
-                  onClick={() => copyToClipboard(landingPageUrl)}
-                >
+                <code className="text-sm bg-white/20 px-2 py-1 rounded truncate flex-1 mr-2">{landingPageUrl}</code>
+                <Button size="sm" variant="secondary" onClick={() => copyToClipboard(landingPageUrl)}>
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
@@ -229,14 +244,8 @@ const AdminDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <code className="text-sm bg-white/20 px-2 py-1 rounded truncate flex-1 mr-2">
-                  {callbackUrl}
-                </code>
-                <Button 
-                  size="sm" 
-                  variant="secondary"
-                  onClick={() => copyToClipboard(callbackUrl)}
-                >
+                <code className="text-sm bg-white/20 px-2 py-1 rounded truncate flex-1 mr-2">{callbackUrl}</code>
+                <Button size="sm" variant="secondary" onClick={() => copyToClipboard(callbackUrl)}>
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
@@ -276,9 +285,7 @@ const AdminDashboard = () => {
                   <Wifi className="h-5 w-5" />
                   <span>Konfigurasi MikroTik</span>
                 </CardTitle>
-                <CardDescription>
-                  Atur koneksi ke router MikroTik untuk manajemen hotspot user
-                </CardDescription>
+                <CardDescription>Atur koneksi ke router MikroTik untuk manajemen hotspot user</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -288,7 +295,7 @@ const AdminDashboard = () => {
                       id="mikrotik-ip"
                       placeholder="192.168.1.1"
                       value={mikrotikConfig.ipAddress}
-                      onChange={(e) => setMikrotikConfig(prev => ({ ...prev, ipAddress: e.target.value }))}
+                      onChange={(e) => setMikrotikConfig((prev) => ({ ...prev, ipAddress: e.target.value }))}
                     />
                   </div>
                   <div>
@@ -297,7 +304,7 @@ const AdminDashboard = () => {
                       id="mikrotik-username"
                       placeholder="admin"
                       value={mikrotikConfig.username}
-                      onChange={(e) => setMikrotikConfig(prev => ({ ...prev, username: e.target.value }))}
+                      onChange={(e) => setMikrotikConfig((prev) => ({ ...prev, username: e.target.value }))}
                     />
                   </div>
                 </div>
@@ -308,15 +315,15 @@ const AdminDashboard = () => {
                     type="password"
                     placeholder="Masukkan password"
                     value={mikrotikConfig.password}
-                    onChange={(e) => setMikrotikConfig(prev => ({ ...prev, password: e.target.value }))}
+                    onChange={(e) => setMikrotikConfig((prev) => ({ ...prev, password: e.target.value }))}
                   />
                 </div>
                 <div className="flex space-x-3">
-                  <Button 
+                  <Button
                     onClick={handleTestMikrotikConnection}
                     disabled={isTestingConnection}
                     variant="outline"
-                    className="flex items-center space-x-2"
+                    className="flex items-center space-x-2 bg-transparent"
                   >
                     <TestTube className="h-4 w-4" />
                     <span>{isTestingConnection ? "Testing..." : "Tes Koneksi"}</span>
@@ -338,9 +345,7 @@ const AdminDashboard = () => {
                   <CreditCard className="h-5 w-5" />
                   <span>Konfigurasi Payment Gateway (TriPay)</span>
                 </CardTitle>
-                <CardDescription>
-                  Kredensial TriPay telah dikonfigurasi dan siap digunakan
-                </CardDescription>
+                <CardDescription>Kredensial TriPay telah dikonfigurasi dan siap digunakan</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="bg-green-50 p-4 rounded-lg border border-green-200">
@@ -349,9 +354,15 @@ const AdminDashboard = () => {
                     Status: Terkonfigurasi
                   </h4>
                   <div className="space-y-2 text-sm text-green-800">
-                    <p><strong>Merchant Code:</strong> {paymentConfig.merchantCode}</p>
-                    <p><strong>API Key:</strong> {paymentConfig.apiKey.substring(0, 10)}...</p>
-                    <p><strong>Private Key:</strong> Tersimpan dengan aman</p>
+                    <p>
+                      <strong>Merchant Code:</strong> {paymentConfig.merchantCode}
+                    </p>
+                    <p>
+                      <strong>API Key:</strong> {paymentConfig.apiKey.substring(0, 10)}...
+                    </p>
+                    <p>
+                      <strong>Private Key:</strong> Tersimpan dengan aman
+                    </p>
                   </div>
                 </div>
 
@@ -361,7 +372,7 @@ const AdminDashboard = () => {
                     id="merchant-code"
                     placeholder="Masukkan merchant code"
                     value={paymentConfig.merchantCode}
-                    onChange={(e) => setPaymentConfig(prev => ({ ...prev, merchantCode: e.target.value }))}
+                    onChange={(e) => setPaymentConfig((prev) => ({ ...prev, merchantCode: e.target.value }))}
                   />
                 </div>
                 <div>
@@ -370,7 +381,7 @@ const AdminDashboard = () => {
                     id="api-key"
                     placeholder="Masukkan API key"
                     value={paymentConfig.apiKey}
-                    onChange={(e) => setPaymentConfig(prev => ({ ...prev, apiKey: e.target.value }))}
+                    onChange={(e) => setPaymentConfig((prev) => ({ ...prev, apiKey: e.target.value }))}
                   />
                 </div>
                 <div>
@@ -380,21 +391,15 @@ const AdminDashboard = () => {
                     type="password"
                     placeholder="Masukkan private key"
                     value={paymentConfig.privateKey}
-                    onChange={(e) => setPaymentConfig(prev => ({ ...prev, privateKey: e.target.value }))}
+                    onChange={(e) => setPaymentConfig((prev) => ({ ...prev, privateKey: e.target.value }))}
                   />
                 </div>
-                
+
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h4 className="font-semibold text-blue-900 mb-2">URL Callback untuk TriPay:</h4>
                   <div className="flex items-center space-x-2">
-                    <code className="bg-white px-3 py-2 rounded border text-sm flex-1">
-                      {callbackUrl}
-                    </code>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => copyToClipboard(callbackUrl)}
-                    >
+                    <code className="bg-white px-3 py-2 rounded border text-sm flex-1">{callbackUrl}</code>
+                    <Button size="sm" variant="outline" onClick={() => copyToClipboard(callbackUrl)}>
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
@@ -418,9 +423,7 @@ const AdminDashboard = () => {
                   <Package className="h-5 w-5" />
                   <span>Manajemen Paket Voucher</span>
                 </CardTitle>
-                <CardDescription>
-                  Atur harga dan nama tampilan untuk setiap profil user MikroTik
-                </CardDescription>
+                <CardDescription>Atur harga dan nama tampilan untuk setiap profil user MikroTik</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -450,7 +453,9 @@ const AdminDashboard = () => {
                             id={`price-${index}`}
                             type="number"
                             value={profile.price}
-                            onChange={(e) => handleUpdateProfile(index, { price: parseInt(e.target.value) || 0 })}
+                            onChange={(e) =>
+                              handleUpdateProfile(index, { price: Number.parseInt(e.target.value) || 0 })
+                            }
                           />
                         </div>
                         <div className="flex space-x-2">
@@ -487,9 +492,7 @@ const AdminDashboard = () => {
                   <MessageSquare className="h-5 w-5" />
                   <span>Konfigurasi WhatsApp Gateway</span>
                 </CardTitle>
-                <CardDescription>
-                  Atur layanan WhatsApp gateway untuk pengiriman voucher otomatis
-                </CardDescription>
+                <CardDescription>Atur layanan WhatsApp gateway untuk pengiriman voucher otomatis</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -498,7 +501,7 @@ const AdminDashboard = () => {
                     id="wa-endpoint"
                     placeholder="https://api.whatsapp-gateway.com/send"
                     value={whatsappConfig.endpoint}
-                    onChange={(e) => setWhatsAppConfig(prev => ({ ...prev, endpoint: e.target.value }))}
+                    onChange={(e) => setWhatsAppConfig((prev) => ({ ...prev, endpoint: e.target.value }))}
                   />
                 </div>
                 <div>
@@ -507,19 +510,23 @@ const AdminDashboard = () => {
                     id="wa-api-key"
                     placeholder="Masukkan API key WhatsApp gateway"
                     value={whatsappConfig.apiKey}
-                    onChange={(e) => setWhatsAppConfig(prev => ({ ...prev, apiKey: e.target.value }))}
+                    onChange={(e) => setWhatsAppConfig((prev) => ({ ...prev, apiKey: e.target.value }))}
                   />
                 </div>
 
                 <div className="bg-green-50 p-4 rounded-lg">
                   <h4 className="font-semibold text-green-900 mb-2">Template Pesan:</h4>
                   <div className="bg-white p-3 rounded border text-sm">
-                    <p><strong>Voucher Internet Berhasil Dibeli!</strong></p>
+                    <p>
+                      <strong>Voucher Internet Berhasil Dibeli!</strong>
+                    </p>
                     <p>Paket: [NAMA_PAKET]</p>
                     <p>Username: [USERNAME]</p>
                     <p>Password: [PASSWORD]</p>
                     <p>Cara login: Buka browser → ketik 192.168.1.1 → masukkan username & password</p>
-                    <p><em>Terima kasih telah menggunakan layanan kami!</em></p>
+                    <p>
+                      <em>Terima kasih telah menggunakan layanan kami!</em>
+                    </p>
                   </div>
                 </div>
 
@@ -538,9 +545,7 @@ const AdminDashboard = () => {
                   <Settings className="h-5 w-5" />
                   <span>Pengaturan Akun Admin</span>
                 </CardTitle>
-                <CardDescription>
-                  Ubah username dan password untuk keamanan panel admin
-                </CardDescription>
+                <CardDescription>Ubah username dan password untuk keamanan panel admin</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="bg-yellow-50 p-4 rounded-lg mb-4">
@@ -560,7 +565,7 @@ const AdminDashboard = () => {
                     type="password"
                     placeholder="Masukkan password saat ini"
                     value={adminCredentials.currentPassword}
-                    onChange={(e) => setAdminCredentials(prev => ({ ...prev, currentPassword: e.target.value }))}
+                    onChange={(e) => setAdminCredentials((prev) => ({ ...prev, currentPassword: e.target.value }))}
                     required
                   />
                 </div>
@@ -572,9 +577,11 @@ const AdminDashboard = () => {
                     type="text"
                     placeholder="Masukkan username baru"
                     value={adminCredentials.newUsername}
-                    onChange={(e) => setAdminCredentials(prev => ({ ...prev, newUsername: e.target.value }))}
+                    onChange={(e) => setAdminCredentials((prev) => ({ ...prev, newUsername: e.target.value }))}
                   />
-                  <p className="text-sm text-gray-600 mt-1">Username saat ini: <strong>admin</strong></p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Username saat ini: <strong>admin</strong>
+                  </p>
                 </div>
 
                 <div>
@@ -584,7 +591,7 @@ const AdminDashboard = () => {
                     type="password"
                     placeholder="Masukkan password baru"
                     value={adminCredentials.newPassword}
-                    onChange={(e) => setAdminCredentials(prev => ({ ...prev, newPassword: e.target.value }))}
+                    onChange={(e) => setAdminCredentials((prev) => ({ ...prev, newPassword: e.target.value }))}
                   />
                   <p className="text-sm text-gray-600 mt-1">Kosongkan jika tidak ingin mengubah password</p>
                 </div>
@@ -597,7 +604,7 @@ const AdminDashboard = () => {
                       type="password"
                       placeholder="Konfirmasi password baru"
                       value={adminCredentials.confirmPassword}
-                      onChange={(e) => setAdminCredentials(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                      onChange={(e) => setAdminCredentials((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                     />
                   </div>
                 )}
@@ -622,7 +629,7 @@ const AdminDashboard = () => {
         </Tabs>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AdminDashboard;
+export default AdminDashboard
