@@ -61,9 +61,9 @@ const AdminDashboard = () => {
   });
 
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>({
-    merchantCode: "",
-    apiKey: "",
-    privateKey: ""
+    merchantCode: "T42431",
+    apiKey: "WfcMqxIr6QCFzeo5PT1PLKphuhqIqpURV9jGgMlN",
+    privateKey: "Swu3P-JkeaZ-m9FnW-649ja-H0eD0"
   });
 
   const [whatsappConfig, setWhatsAppConfig] = useState<WhatsAppConfig>({
@@ -269,7 +269,6 @@ const AdminDashboard = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* MikroTik Configuration */}
           <TabsContent value="mikrotik">
             <Card>
               <CardHeader>
@@ -331,7 +330,7 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Payment Configuration */}
+          {/* Payment Configuration - Updated with real credentials */}
           <TabsContent value="payment">
             <Card>
               <CardHeader>
@@ -340,10 +339,22 @@ const AdminDashboard = () => {
                   <span>Konfigurasi Payment Gateway (TriPay)</span>
                 </CardTitle>
                 <CardDescription>
-                  Atur kredensial TriPay untuk proses pembayaran otomatis
+                  Kredensial TriPay telah dikonfigurasi dan siap digunakan
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <h4 className="font-semibold text-green-900 mb-2 flex items-center">
+                    <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                    Status: Terkonfigurasi
+                  </h4>
+                  <div className="space-y-2 text-sm text-green-800">
+                    <p><strong>Merchant Code:</strong> {paymentConfig.merchantCode}</p>
+                    <p><strong>API Key:</strong> {paymentConfig.apiKey.substring(0, 10)}...</p>
+                    <p><strong>Private Key:</strong> Tersimpan dengan aman</p>
+                  </div>
+                </div>
+
                 <div>
                   <Label htmlFor="merchant-code">Merchant Code</Label>
                   <Input
@@ -400,7 +411,6 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Package Management */}
           <TabsContent value="packages">
             <Card>
               <CardHeader>
@@ -470,7 +480,6 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* WhatsApp Configuration */}
           <TabsContent value="whatsapp">
             <Card>
               <CardHeader>
@@ -522,7 +531,6 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Admin Settings */}
           <TabsContent value="admin">
             <Card>
               <CardHeader>

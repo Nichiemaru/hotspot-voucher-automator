@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Wifi, Clock, Users, Shield } from "lucide-react";
+import { Wifi, Clock, Users, Shield, Loader2 } from "lucide-react";
+import tripayService from "@/services/tripayService";
 
 interface VoucherPackage {
   id: string;
@@ -21,6 +21,8 @@ interface VoucherPackage {
 const Index = () => {
   const [selectedPackage, setSelectedPackage] = useState<VoucherPackage | null>(null);
   const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   // Sample voucher packages - in real app this would come from API
@@ -73,20 +75,78 @@ const Index = () => {
       return;
     }
 
+    if (!customerName) {
+      toast.error("Nama pelanggan harus diisi!");
+      return;
+    }
+
+    if (!customerEmail) {
+      toast.error("Email pelanggan harus diisi!");
+      return;
+    }
+
     if (!whatsappNumber.match(/^(\+62|62|0)[0-9]{9,13}$/)) {
       toast.error("Format nomor WhatsApp tidak valid!");
       return;
     }
 
+    if (!selectedPackage) return;
+
     setIsLoading(true);
     
-    // Simulate payment processing
-    setTimeout(() => {
-      toast.success(`Pembelian berhasil! Voucher ${selectedPackage?.name} akan dikirim ke WhatsApp ${whatsappNumber}`);
-      setSelectedPackage(null);
-      setWhatsappNumber("");
+    try {
+      // Buat merchant reference unik
+      const merchantRef = `VOUCHER-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Data transaksi untuk TriPay
+      const transactionData = {
+        method: 'BRIVA', // Atau method lain sesuai kebutuhan
+        merchant_ref: merchantRef,
+        amount: selectedPackage.price,
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: whatsappNumber,
+        order_items: [
+          {
+            sku: selectedPackage.profile,
+            name: selectedPackage.name,
+            price: selectedPackage.price,
+            quantity: 1
+          }
+        ],
+        return_url: window.location.origin + '/payment-success',
+        expired_time: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 jam
+      };
+
+      console.log('Creating TriPay transaction:', transactionData);
+
+      // Buat transaksi di TriPay
+      const response = await tripayService.createTransaction(transactionData);
+
+      if (response.success && response.data) {
+        // Simpan reference untuk tracking
+        localStorage.setItem('current_transaction', JSON.stringify({
+          reference: response.data.reference,
+          merchant_ref: merchantRef,
+          package: selectedPackage,
+          customer: {
+            name: customerName,
+            email: customerEmail,
+            phone: whatsappNumber
+          }
+        }));
+
+        // Redirect ke halaman pembayaran TriPay
+        window.location.href = response.data.checkout_url;
+      } else {
+        throw new Error(response.message || 'Gagal membuat transaksi');
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast.error("Gagal memproses pembayaran. Silakan coba lagi.");
+    } finally {
       setIsLoading(false);
-    }, 2000);
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -224,6 +284,29 @@ const Index = () => {
           
           <div className="space-y-4">
             <div>
+              <Label htmlFor="customer-name">Nama Lengkap</Label>
+              <Input
+                id="customer-name"
+                placeholder="Masukkan nama lengkap"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="customer-email">Email</Label>
+              <Input
+                id="customer-email"
+                type="email"
+                placeholder="Masukkan email"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            
+            <div>
               <Label htmlFor="whatsapp">Nomor WhatsApp</Label>
               <Input
                 id="whatsapp"
@@ -239,7 +322,7 @@ const Index = () => {
           </div>
           
           <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setSelectedPackage(null)}>
+            <Button variant="outline" onClick={() => setSelectedPackage(null)} disabled={isLoading}>
               Batal
             </Button>
             <Button 
@@ -247,7 +330,14 @@ const Index = () => {
               disabled={isLoading}
               className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
             >
-              {isLoading ? "Memproses..." : "Bayar Sekarang"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Memproses...
+                </>
+              ) : (
+                "Lanjut ke Pembayaran"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
