@@ -1,145 +1,71 @@
 import { RouterOSAPI } from "node-routeros"
-import { pool } from "../config/database"
+import { configService } from "./configService"
 import { logger } from "../utils/logger"
 
 class MikroTikService {
   private conn: RouterOSAPI | null = null
-  private config: any = {}
 
-  async loadConfig() {
+  // ✅ CONNECT KE MIKROTIK
+  async connect(): Promise<boolean> {
     try {
-      const result = await pool.query(`
-        SELECT key, value FROM system_config 
-        WHERE key IN ('mikrotik_host', 'mikrotik_username', 'mikrotik_password')
-      `)
+      const host = await configService.getConfig("mikrotik_host")
+      const username = await configService.getConfig("mikrotik_username")
+      const password = await configService.getConfig("mikrotik_password")
 
-      this.config = {}
-      result.rows.forEach((row) => {
-        this.config[row.key] = row.value
-      })
-    } catch (error) {
-      logger.error("Error loading MikroTik config:", error)
-      throw error
-    }
-  }
-
-  async connect() {
-    try {
-      await this.loadConfig()
-
-      if (!this.config.mikrotik_host || !this.config.mikrotik_username || !this.config.mikrotik_password) {
-        throw new Error("MikroTik configuration is incomplete")
+      if (!host || !username || !password) {
+        throw new Error("MikroTik configuration incomplete")
       }
 
       this.conn = new RouterOSAPI({
-        host: this.config.mikrotik_host,
-        user: this.config.mikrotik_username,
-        password: this.config.mikrotik_password,
+        host,
+        user: username,
+        password,
         timeout: 10,
       })
 
       await this.conn.connect()
-      logger.info("Connected to MikroTik RouterOS")
+      logger.info(`✅ Connected to MikroTik: ${host}`)
+      return true
     } catch (error) {
-      logger.error("MikroTik connection error:", error)
-      throw error
-    }
-  }
-
-  async disconnect() {
-    if (this.conn) {
-      await this.conn.close()
-      this.conn = null
-      logger.info("Disconnected from MikroTik RouterOS")
-    }
-  }
-
-  async checkProfile(profileName: string): Promise<boolean> {
-    try {
-      if (!this.conn) await this.connect()
-
-      const profiles = await this.conn!.write("/ip/hotspot/user/profile/print", [`?name=${profileName}`])
-
-      return profiles.length > 0
-    } catch (error) {
-      logger.error("Error checking MikroTik profile:", error)
+      logger.error("❌ MikroTik connection failed:", error)
       return false
     }
   }
 
+  // ✅ BENAR-BENAR CREATE USER DI MIKROTIK
   async createHotspotUser(username: string, password: string, profile: string): Promise<boolean> {
     try {
-      if (!this.conn) await this.connect()
+      if (!this.conn) {
+        const connected = await this.connect()
+        if (!connected) return false
+      }
 
       // Check if user already exists
       const existingUsers = await this.conn!.write("/ip/hotspot/user/print", [`?name=${username}`])
 
       if (existingUsers.length > 0) {
-        logger.warn(`User ${username} already exists in MikroTik`)
+        logger.warn(`⚠️ User ${username} already exists in MikroTik`)
         return false
       }
 
-      // Create new user
+      // ✅ CREATE NEW HOTSPOT USER
       await this.conn!.write("/ip/hotspot/user/add", [
         `=name=${username}`,
         `=password=${password}`,
         `=profile=${profile}`,
         "=disabled=no",
+        `=comment=Auto-generated voucher - ${new Date().toISOString()}`,
       ])
 
-      logger.info(`Created MikroTik user: ${username} with profile: ${profile}`)
+      logger.info(`✅ MikroTik user created: ${username} with profile: ${profile}`)
       return true
     } catch (error) {
-      logger.error("Error creating MikroTik user:", error)
-      throw error
+      logger.error("❌ Error creating MikroTik user:", error)
+      return false
     }
   }
 
-  async getHotspotUsers(): Promise<any[]> {
-    try {
-      if (!this.conn) await this.connect()
-
-      const users = await this.conn!.write("/ip/hotspot/user/print")
-      return users
-    } catch (error) {
-      logger.error("Error getting MikroTik users:", error)
-      throw error
-    }
-  }
-
-  async getHotspotProfiles(): Promise<any[]> {
-    try {
-      if (!this.conn) await this.connect()
-
-      const profiles = await this.conn!.write("/ip/hotspot/user/profile/print")
-      return profiles
-    } catch (error) {
-      logger.error("Error getting MikroTik profiles:", error)
-      throw error
-    }
-  }
-
-  async deleteHotspotUser(username: string): Promise<boolean> {
-    try {
-      if (!this.conn) await this.connect()
-
-      const users = await this.conn!.write("/ip/hotspot/user/print", [`?name=${username}`])
-
-      if (users.length === 0) {
-        logger.warn(`User ${username} not found in MikroTik`)
-        return false
-      }
-
-      await this.conn!.write("/ip/hotspot/user/remove", [`=.id=${users[0][".id"]}`])
-
-      logger.info(`Deleted MikroTik user: ${username}`)
-      return true
-    } catch (error) {
-      logger.error("Error deleting MikroTik user:", error)
-      throw error
-    }
-  }
-
+  // ✅ GENERATE UNIQUE VOUCHER CODE
   generateVoucherCode(): string {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     let result = ""
@@ -149,6 +75,7 @@ class MikroTikService {
     return result
   }
 
+  // ✅ GENERATE SECURE PASSWORD
   generateVoucherPassword(): string {
     const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
     let result = ""
@@ -156,6 +83,23 @@ class MikroTikService {
       result += chars.charAt(Math.floor(Math.random() * chars.length))
     }
     return result
+  }
+
+  // ✅ CHECK PROFILE EXISTS
+  async checkProfile(profileName: string): Promise<boolean> {
+    try {
+      if (!this.conn) {
+        const connected = await this.connect()
+        if (!connected) return false
+      }
+
+      const profiles = await this.conn!.write("/ip/hotspot/user/profile/print", [`?name=${profileName}`])
+
+      return profiles.length > 0
+    } catch (error) {
+      logger.error("Error checking MikroTik profile:", error)
+      return false
+    }
   }
 }
 

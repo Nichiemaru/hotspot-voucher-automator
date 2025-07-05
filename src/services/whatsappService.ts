@@ -1,27 +1,10 @@
 import axios from "axios"
-import { pool } from "../config/database"
+import { configService } from "./configService"
 import { logger } from "../utils/logger"
+import { pool } from "../database" // Declare the pool variable
 
 class WhatsAppService {
-  private config: any = {}
-
-  async loadConfig() {
-    try {
-      const result = await pool.query(`
-        SELECT key, value FROM system_config 
-        WHERE key IN ('whatsapp_api_url', 'whatsapp_api_key')
-      `)
-
-      this.config = {}
-      result.rows.forEach((row) => {
-        this.config[row.key] = row.value
-      })
-    } catch (error) {
-      logger.error("Error loading WhatsApp config:", error)
-      throw error
-    }
-  }
-
+  // ✅ BENAR-BENAR KIRIM WHATSAPP OTOMATIS
   async sendVoucherMessage(
     phoneNumber: string,
     voucherData: {
@@ -34,57 +17,22 @@ class WhatsAppService {
     },
   ): Promise<boolean> {
     try {
-      await this.loadConfig()
+      // Load konfigurasi WhatsApp dari database
+      const apiUrl = await configService.getConfig("whatsapp_api_url")
+      const apiKey = await configService.getConfig("whatsapp_api_key")
 
-      if (!this.config.whatsapp_api_url || !this.config.whatsapp_api_key) {
-        logger.warn("WhatsApp configuration is incomplete, skipping message")
+      if (!apiUrl || !apiKey) {
+        logger.warn("WhatsApp configuration incomplete")
         return false
       }
 
-      // Format phone number (remove + and spaces)
-      const formattedPhone = phoneNumber.replace(/[+\s-]/g, "")
+      // Format nomor telepon (hapus +, spasi, strip)
+      const cleanPhone = phoneNumber.replace(/[+\s-]/g, "")
 
-      const message = this.formatVoucherMessage(voucherData)
+      // Format pesan voucher
+      const message = `🎉 *VOUCHER WIFI BERHASIL DIBELI* 🎉
 
-      const response = await axios.post(
-        `${this.config.whatsapp_api_url}/send-message`,
-        {
-          phone: formattedPhone,
-          message: message,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${this.config.whatsapp_api_key}`,
-            "Content-Type": "application/json",
-          },
-          timeout: 10000,
-        },
-      )
-
-      if (response.data.success) {
-        logger.info(`WhatsApp voucher sent to ${phoneNumber}`)
-        return true
-      } else {
-        logger.error("WhatsApp API error:", response.data)
-        return false
-      }
-    } catch (error) {
-      logger.error("Error sending WhatsApp message:", error)
-      return false
-    }
-  }
-
-  private formatVoucherMessage(voucherData: {
-    customerName: string
-    packageName: string
-    voucherCode: string
-    voucherPassword: string
-    duration: string
-    speed: string
-  }): string {
-    return `🎉 *VOUCHER WIFI HOTSPOT* 🎉
-
-Halo ${voucherData.customerName}!
+Halo *${voucherData.customerName}*!
 
 Terima kasih telah melakukan pembelian. Berikut detail voucher WiFi Anda:
 
@@ -93,8 +41,8 @@ Terima kasih telah melakukan pembelian. Berikut detail voucher WiFi Anda:
 🚀 *Kecepatan:* ${voucherData.speed}
 
 🔐 *DETAIL LOGIN:*
-👤 Username: ${voucherData.voucherCode}
-🔑 Password: ${voucherData.voucherPassword}
+👤 *Username:* \`${voucherData.voucherCode}\`
+🔑 *Password:* \`${voucherData.voucherPassword}\`
 
 📋 *CARA MENGGUNAKAN:*
 1. Hubungkan ke WiFi "Hotspot"
@@ -107,72 +55,76 @@ Terima kasih telah melakukan pembelian. Berikut detail voucher WiFi Anda:
 - Simpan username dan password dengan baik
 - Hubungi kami jika ada kendala
 
-Terima kasih! 🙏
+Terima kasih telah mempercayai layanan kami! 🙏
 
 ---
-*Hotspot Voucher System*`
-  }
+*HotSpot Voucher System*
+Powered by MikroTik RouterOS`
 
-  async sendPaymentNotification(
-    phoneNumber: string,
-    customerName: string,
-    amount: number,
-    paymentUrl: string,
-  ): Promise<boolean> {
-    try {
-      await this.loadConfig()
-
-      if (!this.config.whatsapp_api_url || !this.config.whatsapp_api_key) {
-        logger.warn("WhatsApp configuration is incomplete, skipping message")
-        return false
-      }
-
-      const formattedPhone = phoneNumber.replace(/[+\s-]/g, "")
-      const formattedAmount = new Intl.NumberFormat("id-ID", {
-        style: "currency",
-        currency: "IDR",
-      }).format(amount)
-
-      const message = `🔔 *KONFIRMASI PEMBAYARAN* 🔔
-
-Halo ${customerName}!
-
-Pesanan Anda telah dibuat dengan total pembayaran ${formattedAmount}.
-
-Silakan lakukan pembayaran melalui link berikut:
-${paymentUrl}
-
-Voucher WiFi akan dikirim otomatis setelah pembayaran berhasil.
-
-Terima kasih! 🙏
-
----
-*Hotspot Voucher System*`
-
+      // ✅ KIRIM KE WHATSAPP GATEWAY
       const response = await axios.post(
-        `${this.config.whatsapp_api_url}/send-message`,
+        `${apiUrl}/send-message`,
         {
-          phone: formattedPhone,
+          phone: cleanPhone,
           message: message,
+          type: "text",
         },
         {
           headers: {
-            Authorization: `Bearer ${this.config.whatsapp_api_key}`,
+            Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
-          timeout: 10000,
+          timeout: 15000,
         },
       )
 
-      if (response.data.success) {
-        logger.info(`WhatsApp payment notification sent to ${phoneNumber}`)
+      if (response.data.success || response.status === 200) {
+        logger.info(`✅ WhatsApp voucher sent successfully to ${phoneNumber}`)
+
+        // Log ke database untuk tracking
+        await this.logWhatsAppActivity(phoneNumber, voucherData.voucherCode, "voucher_sent", "success")
+
         return true
       } else {
         logger.error("WhatsApp API error:", response.data)
+        await this.logWhatsAppActivity(phoneNumber, voucherData.voucherCode, "voucher_sent", "failed")
         return false
       }
     } catch (error) {
-      logger.error("Error sending WhatsApp payment notification:", error)
+      logger.error("Error sending WhatsApp voucher:", error)
+      await this.logWhatsAppActivity(phoneNumber, "", "voucher_sent", "error")
+      return false
+    }
+  }
+
+  // ✅ LOG AKTIVITAS WHATSAPP
+  private async logWhatsAppActivity(phone: string, voucherCode: string, action: string, status: string) {
+    try {
+      await pool.query(
+        "INSERT INTO activity_logs (action, description, status, created_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)",
+        [action, `WhatsApp to ${phone} - Voucher: ${voucherCode}`, status],
+      )
+    } catch (error) {
+      logger.error("Error logging WhatsApp activity:", error)
+    }
+  }
+
+  // ✅ TEST WHATSAPP CONNECTION
+  async testConnection(): Promise<boolean> {
+    try {
+      const apiUrl = await configService.getConfig("whatsapp_api_url")
+      const apiKey = await configService.getConfig("whatsapp_api_key")
+
+      if (!apiUrl || !apiKey) return false
+
+      const response = await axios.get(`${apiUrl}/status`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        timeout: 10000,
+      })
+
+      return response.status === 200
+    } catch (error) {
+      logger.error("WhatsApp connection test failed:", error)
       return false
     }
   }

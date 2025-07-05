@@ -1,3 +1,5 @@
+const API_BASE_URL = process.env.VITE_API_URL || "http://localhost:3001/api"
+
 interface VoucherPackage {
   id: number
   name: string
@@ -9,113 +11,143 @@ interface VoucherPackage {
   enabled: boolean
 }
 
+interface CreateTransactionRequest {
+  packageId: number
+  customerName: string
+  customerEmail: string
+  customerPhone: string
+}
+
 interface ApiResponse<T> {
   success: boolean
   message: string
   data: T
+  token?: string
 }
 
 class ApiService {
-  private baseUrl = "/api"
+  private async request(endpoint: string, options: RequestInit = {}) {
+    const url = `${API_BASE_URL}${endpoint}`
 
-  async getPackages(): Promise<VoucherPackage[]> {
-    try {
-      const response = await fetch(`${this.baseUrl}/packages`)
-      const result: ApiResponse<VoucherPackage[]> = await response.json()
+    const config: RequestInit = {
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      ...options,
+    }
 
-      if (result.success) {
-        return result.data
+    // Add auth token if available
+    const token = localStorage.getItem("admin_token")
+    if (token) {
+      config.headers = {
+        ...config.headers,
+        Authorization: `Bearer ${token}`,
       }
-
-      throw new Error(result.message)
-    } catch (error) {
-      console.error("Error fetching packages:", error)
-      // Fallback ke data hardcoded jika API belum ready
-      return [
-        {
-          id: 1,
-          name: "Paket Hemat 1 Jam",
-          profile: "1jam",
-          price: 2000,
-          duration: "1 Jam",
-          speed: "2 Mbps",
-          description: "Cocok untuk browsing ringan dan media sosial",
-          enabled: true,
-        },
-        {
-          id: 2,
-          name: "Paket Super Cepat 6 Jam",
-          profile: "6jam",
-          price: 5000,
-          duration: "6 Jam",
-          speed: "5 Mbps",
-          description: "Ideal untuk streaming dan download",
-          enabled: true,
-        },
-        {
-          id: 3,
-          name: "Paket Premium 24 Jam",
-          profile: "1hari",
-          price: 10000,
-          duration: "24 Jam",
-          speed: "10 Mbps",
-          description: "Unlimited browsing untuk seharian penuh",
-          enabled: true,
-        },
-        {
-          id: 4,
-          name: "Paket Mingguan",
-          profile: "1minggu",
-          price: 50000,
-          duration: "7 Hari",
-          speed: "10 Mbps",
-          description: "Paket hemat untuk kebutuhan seminggu",
-          enabled: true,
-        },
-      ]
     }
+
+    const response = await fetch(url, config)
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Network error" }))
+      throw new Error(error.error || `HTTP ${response.status}`)
+    }
+
+    return response.json()
   }
 
-  async updatePackages(packages: Omit<VoucherPackage, "id">[]): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.baseUrl}/packages/bulk-update`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
-        },
-        body: JSON.stringify({ packages }),
-      })
-
-      const result: ApiResponse<any> = await response.json()
-      return result.success
-    } catch (error) {
-      console.error("Error updating packages:", error)
-      return false
-    }
+  // Packages
+  async getPackages(): Promise<VoucherPackage[]> {
+    return this.request("/packages")
   }
 
-  async createTransaction(data: {
-    packageId: number
-    customerName: string
-    customerEmail: string
-    customerPhone: string
-  }) {
-    try {
-      const response = await fetch(`${this.baseUrl}/transactions/create`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      })
+  async getAdminPackages(): Promise<VoucherPackage[]> {
+    return this.request("/packages/admin")
+  }
 
-      const result = await response.json()
-      return result
-    } catch (error) {
-      console.error("Error creating transaction:", error)
-      throw error
+  async updatePackage(id: number, packageData: Partial<VoucherPackage>): Promise<VoucherPackage> {
+    return this.request(`/packages/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(packageData),
+    })
+  }
+
+  async createPackage(packageData: Omit<VoucherPackage, "id">): Promise<VoucherPackage> {
+    return this.request("/packages", {
+      method: "POST",
+      body: JSON.stringify(packageData),
+    })
+  }
+
+  async deletePackage(id: number): Promise<void> {
+    return this.request(`/packages/${id}`, {
+      method: "DELETE",
+    })
+  }
+
+  // Transactions
+  async createTransaction(transactionData: CreateTransactionRequest) {
+    return this.request("/transactions", {
+      method: "POST",
+      body: JSON.stringify(transactionData),
+    })
+  }
+
+  async getTransactions() {
+    return this.request("/transactions")
+  }
+
+  async getTransaction(id: string) {
+    return this.request(`/transactions/${id}`)
+  }
+
+  // Auth
+  async login(username: string, password: string) {
+    const response = await this.request("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    })
+
+    if (response.token) {
+      localStorage.setItem("admin_token", response.token)
     }
+
+    return response
+  }
+
+  async changePassword(currentPassword: string, newPassword: string, username: string) {
+    return this.request("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword, username }),
+    })
+  }
+
+  // Config
+  async getConfig() {
+    return this.request("/config")
+  }
+
+  async updateConfig(configs: Record<string, any>) {
+    return this.request("/config", {
+      method: "PUT",
+      body: JSON.stringify({ configs }),
+    })
+  }
+
+  // MikroTik
+  async testMikrotikConnection(host: string, username: string, password: string) {
+    return this.request("/mikrotik/test-connection", {
+      method: "POST",
+      body: JSON.stringify({ host, username, password }),
+    })
+  }
+
+  async getMikrotikProfiles() {
+    return this.request("/mikrotik/profiles")
+  }
+
+  async getMikrotikUsers() {
+    return this.request("/mikrotik/users")
   }
 }
 
