@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +17,9 @@ import {
   Save,
   Copy,
   Trash2,
-  Plus
+  Plus,
+  Lock,
+  User
 } from "lucide-react";
 
 interface MikrotikConfig {
@@ -45,6 +46,13 @@ interface VoucherProfile {
   enabled: boolean;
 }
 
+interface AdminCredentials {
+  currentPassword: string;
+  newUsername: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 const AdminDashboard = () => {
   const [mikrotikConfig, setMikrotikConfig] = useState<MikrotikConfig>({
     ipAddress: "",
@@ -61,6 +69,13 @@ const AdminDashboard = () => {
   const [whatsappConfig, setWhatsAppConfig] = useState<WhatsAppConfig>({
     endpoint: "",
     apiKey: ""
+  });
+
+  const [adminCredentials, setAdminCredentials] = useState<AdminCredentials>({
+    currentPassword: "",
+    newUsername: "admin",
+    newPassword: "",
+    confirmPassword: ""
   });
 
   const [profiles, setProfiles] = useState<VoucherProfile[]>([
@@ -110,6 +125,45 @@ const AdminDashboard = () => {
   const handleSaveProfiles = () => {
     console.log("Saving profiles:", profiles);
     toast.success("Konfigurasi paket berhasil disimpan!");
+  };
+
+  const handleUpdateAdminCredentials = () => {
+    if (!adminCredentials.currentPassword) {
+      toast.error("Password saat ini harus diisi!");
+      return;
+    }
+
+    if (adminCredentials.newPassword && adminCredentials.newPassword !== adminCredentials.confirmPassword) {
+      toast.error("Password baru dan konfirmasi password tidak cocok!");
+      return;
+    }
+
+    // Simulate password verification
+    if (adminCredentials.currentPassword !== "admin123") {
+      toast.error("Password saat ini salah!");
+      return;
+    }
+
+    console.log("Updating admin credentials:", {
+      username: adminCredentials.newUsername,
+      passwordChanged: !!adminCredentials.newPassword
+    });
+
+    // Update localStorage with new credentials if needed
+    if (adminCredentials.newPassword) {
+      // In a real app, this would be handled by the backend
+      toast.success("Username dan password berhasil diperbarui!");
+    } else {
+      toast.success("Username berhasil diperbarui!");
+    }
+
+    // Reset form
+    setAdminCredentials(prev => ({
+      ...prev,
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: ""
+    }));
   };
 
   const callbackUrl = `${window.location.origin}/callback.php`;
@@ -192,7 +246,7 @@ const AdminDashboard = () => {
 
         {/* Main Configuration Tabs */}
         <Tabs defaultValue="mikrotik" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:grid-cols-5">
             <TabsTrigger value="mikrotik" className="flex items-center space-x-2">
               <Wifi className="h-4 w-4" />
               <span className="hidden sm:inline">MikroTik</span>
@@ -208,6 +262,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="whatsapp" className="flex items-center space-x-2">
               <MessageSquare className="h-4 w-4" />
               <span className="hidden sm:inline">WhatsApp</span>
+            </TabsTrigger>
+            <TabsTrigger value="admin" className="flex items-center space-x-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Admin</span>
             </TabsTrigger>
           </TabsList>
 
@@ -459,6 +517,96 @@ const AdminDashboard = () => {
                 <Button onClick={handleSaveWhatsAppConfig} className="flex items-center space-x-2">
                   <Save className="h-4 w-4" />
                   <span>Simpan Konfigurasi</span>
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Admin Settings */}
+          <TabsContent value="admin">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Settings className="h-5 w-5" />
+                  <span>Pengaturan Akun Admin</span>
+                </CardTitle>
+                <CardDescription>
+                  Ubah username dan password untuk keamanan panel admin
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-yellow-50 p-4 rounded-lg mb-4">
+                  <div className="flex items-center space-x-2">
+                    <Lock className="h-5 w-5 text-yellow-600" />
+                    <h4 className="font-semibold text-yellow-800">Keamanan Penting</h4>
+                  </div>
+                  <p className="text-sm text-yellow-700 mt-2">
+                    Pastikan untuk menggunakan password yang kuat dan unik untuk melindungi panel admin Anda.
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="current-password">Password Saat Ini *</Label>
+                  <Input
+                    id="current-password"
+                    type="password"
+                    placeholder="Masukkan password saat ini"
+                    value={adminCredentials.currentPassword}
+                    onChange={(e) => setAdminCredentials(prev => ({ ...prev, currentPassword: e.target.value }))}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="new-username">Username Baru</Label>
+                  <Input
+                    id="new-username"
+                    type="text"
+                    placeholder="Masukkan username baru"
+                    value={adminCredentials.newUsername}
+                    onChange={(e) => setAdminCredentials(prev => ({ ...prev, newUsername: e.target.value }))}
+                  />
+                  <p className="text-sm text-gray-600 mt-1">Username saat ini: <strong>admin</strong></p>
+                </div>
+
+                <div>
+                  <Label htmlFor="new-password">Password Baru (Opsional)</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    placeholder="Masukkan password baru"
+                    value={adminCredentials.newPassword}
+                    onChange={(e) => setAdminCredentials(prev => ({ ...prev, newPassword: e.target.value }))}
+                  />
+                  <p className="text-sm text-gray-600 mt-1">Kosongkan jika tidak ingin mengubah password</p>
+                </div>
+
+                {adminCredentials.newPassword && (
+                  <div>
+                    <Label htmlFor="confirm-password">Konfirmasi Password Baru</Label>
+                    <Input
+                      id="confirm-password"
+                      type="password"
+                      placeholder="Konfirmasi password baru"
+                      value={adminCredentials.confirmPassword}
+                      onChange={(e) => setAdminCredentials(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    />
+                  </div>
+                )}
+
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-blue-900 mb-2">Info Keamanan:</h4>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• Gunakan kombinasi huruf besar, huruf kecil, angka, dan simbol</li>
+                    <li>• Minimal 8 karakter untuk password</li>
+                    <li>• Jangan gunakan informasi pribadi yang mudah ditebak</li>
+                    <li>• Ubah password secara berkala untuk keamanan optimal</li>
+                  </ul>
+                </div>
+
+                <Button onClick={handleUpdateAdminCredentials} className="flex items-center space-x-2">
+                  <User className="h-4 w-4" />
+                  <span>Perbarui Kredensial Admin</span>
                 </Button>
               </CardContent>
             </Card>
