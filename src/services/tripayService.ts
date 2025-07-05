@@ -1,4 +1,3 @@
-
 interface TriPayConfig {
   merchantCode: string;
   apiKey: string;
