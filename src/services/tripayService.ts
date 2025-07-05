@@ -1,145 +1,122 @@
 import axios from "axios"
 import crypto from "crypto"
+import { pool } from "../config/database"
 import { logger } from "../utils/logger"
 
-interface TriPayConfig {
-  merchantCode: string
-  apiKey: string
-  privateKey: string
-  baseUrl: string
-}
-
-interface CreateTransactionData {
-  method: string
-  merchant_ref: string
-  amount: number
-  customer_name: string
-  customer_email: string
-  customer_phone: string
-  order_items: Array<{
-    sku: string
-    name: string
-    price: number
-    quantity: number
-  }>
-  return_url: string
-  expired_time: number
-}
-
 class TriPayService {
-  private config: TriPayConfig
+  private config: any = {}
 
-  constructor() {
-    this.config = {
-      merchantCode: process.env.TRIPAY_MERCHANT_CODE || "T42431",
-      apiKey: process.env.TRIPAY_API_KEY || "WfcMqxIr6QCFzeo5PT1PLKphuhqIqpURV9jGgMlN",
-      privateKey: process.env.TRIPAY_PRIVATE_KEY || "Swu3P-JkeaZ-m9FnW-649ja-H0eD0",
-      baseUrl: process.env.TRIPAY_BASE_URL || "https://tripay.co.id/api",
+  async loadConfig() {
+    try {
+      const result = await pool.query(`
+        SELECT key, value FROM system_config 
+        WHERE key IN ('tripay_merchant_code', 'tripay_api_key', 'tripay_private_key', 'tripay_mode')
+      `)
+
+      this.config = {}
+      result.rows.forEach((row) => {
+        this.config[row.key] = row.value
+      })
+    } catch (error) {
+      logger.error("Error loading TriPay config:", error)
+      throw error
     }
+  }
+
+  private getBaseUrl(): string {
+    return this.config.tripay_mode === "production" ? "https://tripay.co.id/api" : "https://tripay.co.id/api-sandbox"
   }
 
   private generateSignature(data: string): string {
-    return crypto.createHmac("sha256", this.config.privateKey).update(data).digest("hex")
+    return crypto.createHmac("sha256", this.config.tripay_private_key).update(data).digest("hex")
   }
 
-  async createTransaction(data: CreateTransactionData) {
+  async getPaymentChannels(): Promise<any[]> {
     try {
-      const payload = JSON.stringify(data)
-      const signature = this.generateSignature(payload)
+      await this.loadConfig()
 
-      const response = await axios.post(`${this.config.baseUrl}/transaction/create`, data, {
+      const response = await axios.get(`${this.getBaseUrl()}/merchant/payment-channel`, {
         headers: {
-          Authorization: `Bearer ${this.config.apiKey}`,
-          "Content-Type": "application/json",
-          "X-Signature": signature,
+          Authorization: `Bearer ${this.config.tripay_api_key}`,
         },
       })
 
-      logger.info("TriPay transaction created:", { reference: response.data.data?.reference })
-
-      return {
-        success: true,
-        data: response.data.data,
-        message: "Transaction created successfully",
-      }
-    } catch (error: any) {
-      logger.error("TriPay create transaction error:", error.response?.data || error.message)
-
-      return {
-        success: false,
-        message: error.response?.data?.message || "Failed to create transaction",
-        data: null,
-      }
-    }
-  }
-
-  async getTransactionDetail(reference: string) {
-    try {
-      const response = await axios.get(`${this.config.baseUrl}/transaction/detail?reference=${reference}`, {
-        headers: {
-          Authorization: `Bearer ${this.config.apiKey}`,
-          "Content-Type": "application/json",
-        },
-      })
-
-      return {
-        success: true,
-        data: response.data.data,
-        message: "Transaction detail retrieved successfully",
-      }
-    } catch (error: any) {
-      logger.error("TriPay get transaction detail error:", error.response?.data || error.message)
-
-      return {
-        success: false,
-        message: error.response?.data?.message || "Failed to get transaction detail",
-        data: null,
-      }
-    }
-  }
-
-  async getPaymentChannels() {
-    try {
-      const response = await axios.get(`${this.config.baseUrl}/merchant/payment-channel`, {
-        headers: {
-          Authorization: `Bearer ${this.config.apiKey}`,
-          "Content-Type": "application/json",
-        },
-      })
-
-      return {
-        success: true,
-        data: response.data.data,
-        message: "Payment channels retrieved successfully",
-      }
-    } catch (error: any) {
-      logger.error("TriPay get payment channels error:", error.response?.data || error.message)
-
-      return {
-        success: false,
-        message: error.response?.data?.message || "Failed to get payment channels",
-        data: null,
-      }
-    }
-  }
-
-  // Method untuk frontend mengambil data paket
-  async getPackages() {
-    try {
-      const response = await fetch("/api/packages")
-      const result = await response.json()
-
-      if (result.success) {
-        return result.data
-      }
-
-      throw new Error(result.message)
+      return response.data.data
     } catch (error) {
-      console.error("Error fetching packages:", error)
-      return []
+      logger.error("Error getting payment channels:", error)
+      throw error
+    }
+  }
+
+  async createPayment(paymentData: {
+    merchant_ref: string
+    amount: number
+    customer_name: string
+    customer_email?: string
+    customer_phone: string
+    order_items: Array<{
+      name: string
+      price: number
+      quantity: number
+    }>
+    payment_method?: string
+  }): Promise<any> {
+    try {
+      await this.loadConfig()
+
+      const data = {
+        method: paymentData.payment_method || "BRIVA",
+        merchant_ref: paymentData.merchant_ref,
+        amount: paymentData.amount,
+        customer_name: paymentData.customer_name,
+        customer_email: paymentData.customer_email || "",
+        customer_phone: paymentData.customer_phone,
+        order_items: paymentData.order_items,
+        return_url: `${process.env.FRONTEND_URL}/payment/callback`,
+        expired_time: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 hours
+        signature: "",
+      }
+
+      // Generate signature
+      const signatureData = this.config.tripay_merchant_code + paymentData.merchant_ref + paymentData.amount
+      data.signature = this.generateSignature(signatureData)
+
+      const response = await axios.post(`${this.getBaseUrl()}/transaction/create`, data, {
+        headers: {
+          Authorization: `Bearer ${this.config.tripay_api_key}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (response.data.success) {
+        logger.info(`TriPay payment created: ${paymentData.merchant_ref}`)
+        return response.data.data
+      } else {
+        throw new Error(response.data.message || "Failed to create payment")
+      }
+    } catch (error) {
+      logger.error("Error creating TriPay payment:", error)
+      throw error
+    }
+  }
+
+  async getPaymentDetail(reference: string): Promise<any> {
+    try {
+      await this.loadConfig()
+
+      const response = await axios.get(`${this.getBaseUrl()}/transaction/detail`, {
+        params: { reference },
+        headers: {
+          Authorization: `Bearer ${this.config.tripay_api_key}`,
+        },
+      })
+
+      return response.data.data
+    } catch (error) {
+      logger.error("Error getting payment detail:", error)
+      throw error
     }
   }
 }
 
-const tripayService = new TriPayService()
-export default tripayService
+export const tripayService = new TriPayService()

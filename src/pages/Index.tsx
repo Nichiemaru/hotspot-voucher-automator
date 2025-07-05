@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { Wifi, Clock, Users, Shield, Loader2 } from "lucide-react"
+import apiService from "@/services/apiService"
 
 interface VoucherPackage {
   id: number
@@ -36,21 +37,15 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingPackages, setIsLoadingPackages] = useState(true)
 
-  // ✅ PERBAIKAN: Ambil data paket dari database
+  // ✅ PERBAIKAN: Ambil data paket dari API/Database
   useEffect(() => {
     const fetchPackages = async () => {
       try {
         setIsLoadingPackages(true)
-
-        // Ambil data dari API backend
-        const response = await fetch("/api/packages")
-        const result = await response.json()
-
-        if (result.success) {
-          setPackages(result.data)
-        } else {
-          toast.error("Gagal memuat paket voucher")
-        }
+        const packagesData = await apiService.getPackages()
+        // Filter hanya paket yang enabled
+        const enabledPackages = packagesData.filter((pkg) => pkg.enabled)
+        setPackages(enabledPackages)
       } catch (error) {
         console.error("Error fetching packages:", error)
         toast.error("Gagal memuat paket voucher")
@@ -92,28 +87,20 @@ const Index = () => {
     setIsLoading(true)
 
     try {
-      // ✅ PERBAIKAN: Gunakan API backend untuk create transaction
-      const response = await fetch("/api/transactions/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          packageId: selectedPackage.id,
-          customerName,
-          customerEmail,
-          customerPhone: whatsappNumber,
-        }),
+      // ✅ PERBAIKAN: Gunakan API service
+      const response = await apiService.createTransaction({
+        packageId: selectedPackage.id,
+        customerName,
+        customerEmail,
+        customerPhone: whatsappNumber,
       })
 
-      const result = await response.json()
-
-      if (result.success) {
+      if (response.success && response.data) {
         // Simpan reference untuk tracking
         localStorage.setItem(
           "current_transaction",
           JSON.stringify({
-            reference: result.data.reference,
+            reference: response.data.reference,
             package: selectedPackage,
             customer: {
               name: customerName,
@@ -124,9 +111,9 @@ const Index = () => {
         )
 
         // Redirect ke halaman pembayaran TriPay
-        window.location.href = result.data.checkout_url
+        window.location.href = response.data.checkout_url
       } else {
-        throw new Error(result.message || "Gagal membuat transaksi")
+        throw new Error(response.message || "Gagal membuat transaksi")
       }
     } catch (error) {
       console.error("Payment error:", error)

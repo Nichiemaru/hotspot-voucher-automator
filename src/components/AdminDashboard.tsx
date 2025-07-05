@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,7 +20,9 @@ import {
   Copy,
   Lock,
   User,
+  RefreshCw,
 } from "lucide-react"
+import apiService from "@/services/apiService"
 
 interface MikrotikConfig {
   ipAddress: string
@@ -40,9 +42,13 @@ interface WhatsAppConfig {
 }
 
 interface VoucherProfile {
+  id?: number
   name: string
   displayName: string
   price: number
+  duration: string
+  speed: string
+  description: string
   enabled: boolean
 }
 
@@ -78,14 +84,78 @@ const AdminDashboard = () => {
     confirmPassword: "",
   })
 
-  const [profiles, setProfiles] = useState<VoucherProfile[]>([
-    { name: "1jam", displayName: "Paket Hemat 1 Jam", price: 2000, enabled: true },
-    { name: "6jam", displayName: "Paket Super Cepat 6 Jam", price: 5000, enabled: true },
-    { name: "1hari", displayName: "Paket Premium 24 Jam", price: 10000, enabled: true },
-    { name: "1minggu", displayName: "Paket Mingguan", price: 50000, enabled: true },
-  ])
-
+  const [profiles, setProfiles] = useState<VoucherProfile[]>([])
   const [isTestingConnection, setIsTestingConnection] = useState(false)
+  const [isLoadingProfiles, setIsLoadingProfiles] = useState(true)
+
+  // ✅ PERBAIKAN: Load data dari API
+  useEffect(() => {
+    const loadProfiles = async () => {
+      try {
+        setIsLoadingProfiles(true)
+        const packagesData = await apiService.getPackages()
+
+        // Convert ke format VoucherProfile
+        const profilesData = packagesData.map((pkg) => ({
+          id: pkg.id,
+          name: pkg.profile,
+          displayName: pkg.name,
+          price: pkg.price,
+          duration: pkg.duration,
+          speed: pkg.speed,
+          description: pkg.description,
+          enabled: pkg.enabled,
+        }))
+
+        setProfiles(profilesData)
+      } catch (error) {
+        console.error("Error loading profiles:", error)
+        // Fallback ke data default
+        setProfiles([
+          {
+            name: "1jam",
+            displayName: "Paket Hemat 1 Jam",
+            price: 2000,
+            duration: "1 Jam",
+            speed: "2 Mbps",
+            description: "Cocok untuk browsing ringan dan media sosial",
+            enabled: true,
+          },
+          {
+            name: "6jam",
+            displayName: "Paket Super Cepat 6 Jam",
+            price: 5000,
+            duration: "6 Jam",
+            speed: "5 Mbps",
+            description: "Ideal untuk streaming dan download",
+            enabled: true,
+          },
+          {
+            name: "1hari",
+            displayName: "Paket Premium 24 Jam",
+            price: 10000,
+            duration: "24 Jam",
+            speed: "10 Mbps",
+            description: "Unlimited browsing untuk seharian penuh",
+            enabled: true,
+          },
+          {
+            name: "1minggu",
+            displayName: "Paket Mingguan",
+            price: 50000,
+            duration: "7 Hari",
+            speed: "10 Mbps",
+            description: "Paket hemat untuk kebutuhan seminggu",
+            enabled: true,
+          },
+        ])
+      } finally {
+        setIsLoadingProfiles(false)
+      }
+    }
+
+    loadProfiles()
+  }, [])
 
   const handleTestMikrotikConnection = async () => {
     setIsTestingConnection(true)
@@ -124,27 +194,52 @@ const AdminDashboard = () => {
 
   const handleSaveProfiles = async () => {
     try {
-      // ✅ PERBAIKAN: Kirim ke API backend untuk update database
-      const response = await fetch("/api/packages/bulk-update", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
-        },
-        body: JSON.stringify({ packages: profiles }),
-      })
+      // ✅ PERBAIKAN: Simpan ke API/Database
+      const packagesData = profiles.map((profile) => ({
+        name: profile.displayName,
+        profile: profile.name,
+        price: profile.price,
+        duration: profile.duration,
+        speed: profile.speed,
+        description: profile.description,
+        enabled: profile.enabled,
+      }))
 
-      const result = await response.json()
+      const success = await apiService.updatePackages(packagesData)
 
-      if (result.success) {
+      if (success) {
         toast.success("Konfigurasi paket berhasil disimpan!")
-        // Data otomatis tersinkronisasi ke landing page
+        toast.success("Data otomatis tersinkronisasi ke landing page!")
       } else {
         toast.error("Gagal menyimpan konfigurasi!")
       }
     } catch (error) {
       console.error("Error saving profiles:", error)
       toast.error("Gagal menyimpan konfigurasi!")
+    }
+  }
+
+  const handleRefreshProfiles = async () => {
+    setIsLoadingProfiles(true)
+    try {
+      const packagesData = await apiService.getPackages()
+      const profilesData = packagesData.map((pkg) => ({
+        id: pkg.id,
+        name: pkg.profile,
+        displayName: pkg.name,
+        price: pkg.price,
+        duration: pkg.duration,
+        speed: pkg.speed,
+        description: pkg.description,
+        enabled: pkg.enabled,
+      }))
+
+      setProfiles(profilesData)
+      toast.success("Data paket berhasil dimuat ulang!")
+    } catch (error) {
+      toast.error("Gagal memuat ulang data paket!")
+    } finally {
+      setIsLoadingProfiles(false)
     }
   }
 
@@ -419,68 +514,96 @@ const AdminDashboard = () => {
           <TabsContent value="packages">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Package className="h-5 w-5" />
-                  <span>Manajemen Paket Voucher</span>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Package className="h-5 w-5" />
+                    <span>Manajemen Paket Voucher</span>
+                  </div>
+                  <Button
+                    onClick={handleRefreshProfiles}
+                    disabled={isLoadingProfiles}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center space-x-2 bg-transparent"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isLoadingProfiles ? "animate-spin" : ""}`} />
+                    <span>Refresh</span>
+                  </Button>
                 </CardTitle>
-                <CardDescription>Atur harga dan nama tampilan untuk setiap profil user MikroTik</CardDescription>
+                <CardDescription>✅ Data tersinkronisasi dengan landing page secara real-time</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {profiles.map((profile, index) => (
-                    <div key={profile.name} className="bg-gray-50 p-4 rounded-lg">
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                        <div>
-                          <Label>Profil User</Label>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Badge variant="secondary">{profile.name}</Badge>
-                            <Badge variant={profile.enabled ? "default" : "secondary"}>
-                              {profile.enabled ? "Aktif" : "Nonaktif"}
-                            </Badge>
+                {isLoadingProfiles ? (
+                  <div className="flex justify-center items-center py-8">
+                    <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
+                    <span className="ml-2 text-gray-600">Memuat data paket...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {profiles.map((profile, index) => (
+                      <div key={profile.name} className="bg-gray-50 p-4 rounded-lg">
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                          <div>
+                            <Label>Profil User</Label>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <Badge variant="secondary">{profile.name}</Badge>
+                              <Badge variant={profile.enabled ? "default" : "secondary"}>
+                                {profile.enabled ? "Aktif" : "Nonaktif"}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div>
+                            <Label htmlFor={`name-${index}`}>Nama Paket</Label>
+                            <Input
+                              id={`name-${index}`}
+                              value={profile.displayName}
+                              onChange={(e) => handleUpdateProfile(index, { displayName: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`price-${index}`}>Harga (IDR)</Label>
+                            <Input
+                              id={`price-${index}`}
+                              type="number"
+                              value={profile.price}
+                              onChange={(e) =>
+                                handleUpdateProfile(index, { price: Number.parseInt(e.target.value) || 0 })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`duration-${index}`}>Durasi</Label>
+                            <Input
+                              id={`duration-${index}`}
+                              value={profile.duration}
+                              onChange={(e) => handleUpdateProfile(index, { duration: e.target.value })}
+                            />
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button
+                              size="sm"
+                              variant={profile.enabled ? "destructive" : "default"}
+                              onClick={() => handleUpdateProfile(index, { enabled: !profile.enabled })}
+                            >
+                              {profile.enabled ? "Nonaktifkan" : "Aktifkan"}
+                            </Button>
                           </div>
                         </div>
-                        <div>
-                          <Label htmlFor={`name-${index}`}>Nama Paket</Label>
-                          <Input
-                            id={`name-${index}`}
-                            value={profile.displayName}
-                            onChange={(e) => handleUpdateProfile(index, { displayName: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor={`price-${index}`}>Harga (IDR)</Label>
-                          <Input
-                            id={`price-${index}`}
-                            type="number"
-                            value={profile.price}
-                            onChange={(e) =>
-                              handleUpdateProfile(index, { price: Number.parseInt(e.target.value) || 0 })
-                            }
-                          />
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            size="sm"
-                            variant={profile.enabled ? "destructive" : "default"}
-                            onClick={() => handleUpdateProfile(index, { enabled: !profile.enabled })}
-                          >
-                            {profile.enabled ? "Nonaktifkan" : "Aktifkan"}
-                          </Button>
-                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
 
-                  <div className="flex justify-between items-center pt-4 border-t">
-                    <p className="text-sm text-gray-600">
-                      * Profil user akan otomatis diambil dari MikroTik saat koneksi berhasil
-                    </p>
-                    <Button onClick={handleSaveProfiles} className="flex items-center space-x-2">
-                      <Save className="h-4 w-4" />
-                      <span>Simpan Semua Paket</span>
-                    </Button>
+                    <div className="flex justify-between items-center pt-4 border-t">
+                      <div className="text-sm text-gray-600">
+                        <p>✅ Perubahan akan langsung terlihat di landing page</p>
+                        <p>* Profil user akan otomatis diambil dari MikroTik saat koneksi berhasil</p>
+                      </div>
+                      <Button onClick={handleSaveProfiles} className="flex items-center space-x-2">
+                        <Save className="h-4 w-4" />
+                        <span>Simpan & Sinkronisasi</span>
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -1,40 +1,65 @@
+import { Pool } from "pg"
 import fs from "fs"
 import path from "path"
-import { pool } from "../config/database"
 import { logger } from "../utils/logger"
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+})
 
 async function runMigrations() {
   try {
-    const migrationsDir = path.join(__dirname, "../../database/migrations")
-    const migrationFiles = fs.readdirSync(migrationsDir).sort()
+    // Create migrations table if it doesn't exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS migrations (
+        id SERIAL PRIMARY KEY,
+        filename VARCHAR(255) NOT NULL UNIQUE,
+        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+
+    // Get list of executed migrations
+    const executedResult = await pool.query("SELECT filename FROM migrations")
+    const executedMigrations = executedResult.rows.map((row) => row.filename)
+
+    // Read migration files
+    const migrationsDir = path.join(__dirname, "../database/migrations")
+    const migrationFiles = fs
+      .readdirSync(migrationsDir)
+      .filter((file) => file.endsWith(".sql"))
+      .sort()
 
     for (const file of migrationFiles) {
-      if (file.endsWith(".sql")) {
+      if (!executedMigrations.includes(file)) {
         logger.info(`Running migration: ${file}`)
 
-        const migrationPath = path.join(migrationsDir, file)
-        const migrationSQL = fs.readFileSync(migrationPath, "utf8")
+        const migrationSQL = fs.readFileSync(path.join(migrationsDir, file), "utf8")
 
-        // Split by semicolon and execute each statement
-        const statements = migrationSQL
-          .split(";")
-          .map((stmt) => stmt.trim())
-          .filter((stmt) => stmt.length > 0)
-
-        for (const statement of statements) {
-          await pool.execute(statement)
-        }
+        await pool.query(migrationSQL)
+        await pool.query("INSERT INTO migrations (filename) VALUES ($1)", [file])
 
         logger.info(`Migration completed: ${file}`)
       }
     }
 
     logger.info("All migrations completed successfully")
-    process.exit(0)
   } catch (error) {
-    logger.error("Migration failed:", error)
-    process.exit(1)
+    logger.error("Migration error:", error)
+    throw error
   }
 }
 
-runMigrations()
+// Run migrations if this file is executed directly
+if (require.main === module) {
+  runMigrations()
+    .then(() => {
+      logger.info("Migrations finished")
+      process.exit(0)
+    })
+    .catch((error) => {
+      logger.error("Migration failed:", error)
+      process.exit(1)
+    })
+}
+
+export { runMigrations }

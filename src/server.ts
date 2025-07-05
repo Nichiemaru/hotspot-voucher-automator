@@ -1,22 +1,17 @@
 import express from "express"
 import cors from "cors"
 import helmet from "helmet"
-import dotenv from "dotenv"
 import rateLimit from "express-rate-limit"
-
-// Import routes
-import authRoutes from "./routes/auth"
-import configRoutes from "./routes/config"
-import packageRoutes from "./routes/packages"
-import transactionRoutes from "./routes/transactions"
-import webhookRoutes from "./routes/webhooks"
-import mikrotikRoutes from "./routes/mikrotik"
-
-// Import middleware
 import { errorHandler } from "./middleware/errorHandler"
 import { logger } from "./utils/logger"
 
-dotenv.config()
+// Import routes
+import authRoutes from "./routes/auth"
+import packagesRoutes from "./routes/packages"
+import transactionsRoutes from "./routes/transactions"
+import configRoutes from "./routes/config"
+import webhooksRoutes from "./routes/webhooks"
+import mikrotikRoutes from "./routes/mikrotik"
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -25,7 +20,7 @@ const PORT = process.env.PORT || 3001
 app.use(helmet())
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true,
   }),
 )
@@ -34,7 +29,6 @@ app.use(
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
-  message: "Too many requests from this IP, please try again later.",
 })
 app.use(limiter)
 
@@ -48,21 +42,17 @@ app.use((req, res, next) => {
   next()
 })
 
-// Health check endpoint
+// Health check
 app.get("/health", (req, res) => {
-  res.json({
-    status: "OK",
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  })
+  res.json({ status: "OK", timestamp: new Date().toISOString() })
 })
 
 // API routes
 app.use("/api/auth", authRoutes)
+app.use("/api/packages", packagesRoutes)
+app.use("/api/transactions", transactionsRoutes)
 app.use("/api/config", configRoutes)
-app.use("/api/packages", packageRoutes)
-app.use("/api/transactions", transactionRoutes)
-app.use("/api/webhooks", webhookRoutes)
+app.use("/api/webhooks", webhooksRoutes)
 app.use("/api/mikrotik", mikrotikRoutes)
 
 // Error handling middleware
@@ -70,15 +60,11 @@ app.use(errorHandler)
 
 // 404 handler
 app.use("*", (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Endpoint not found",
-  })
+  res.status(404).json({ error: "Route not found" })
 })
 
 app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`)
-  console.log(`🚀 Server running on http://localhost:${PORT}`)
 })
 
 export default app

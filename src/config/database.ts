@@ -1,60 +1,22 @@
-import mysql from "mysql2/promise"
+import { Pool } from "pg"
 import { logger } from "../utils/logger"
 
-interface DatabaseConfig {
-  host: string
-  user: string
-  password: string
-  database: string
-  port: number
-  connectionLimit: number
-}
-
-const config: DatabaseConfig = {
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "hotspot_voucher",
-  port: Number.parseInt(process.env.DB_PORT || "3306"),
-  connectionLimit: 10,
-}
-
-// Create connection pool
-export const pool = mysql.createPool(config)
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+})
 
 // Test database connection
-export const testConnection = async (): Promise<boolean> => {
-  try {
-    const connection = await pool.getConnection()
-    await connection.ping()
-    connection.release()
-    logger.info("Database connection successful")
-    return true
-  } catch (error) {
-    logger.error("Database connection failed:", error)
-    return false
-  }
-}
+pool.on("connect", () => {
+  logger.info("Connected to PostgreSQL database")
+})
 
-// Execute query with error handling
-export const executeQuery = async (query: string, params: any[] = []): Promise<any> => {
-  try {
-    const [results] = await pool.execute(query, params)
-    return results
-  } catch (error) {
-    logger.error("Database query error:", { query, params, error })
-    throw error
-  }
-}
+pool.on("error", (err) => {
+  logger.error("PostgreSQL connection error:", err)
+})
 
-// Get single row
-export const getOne = async (query: string, params: any[] = []): Promise<any> => {
-  const results = await executeQuery(query, params)
-  return Array.isArray(results) && results.length > 0 ? results[0] : null
-}
-
-// Get multiple rows
-export const getMany = async (query: string, params: any[] = []): Promise<any[]> => {
-  const results = await executeQuery(query, params)
-  return Array.isArray(results) ? results : []
-}
+export { pool }
+export default pool
