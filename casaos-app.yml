@@ -1,0 +1,98 @@
+# ✅ KONFIGURASI CASAOS APP YANG BENAR
+name: hotspot-voucher-automator
+services:
+  hotspot-voucher:
+    image: hotspot-voucher:latest
+    container_name: hotspot-voucher
+    restart: unless-stopped
+    ports:
+      - target: 3001
+        published: 3001
+        protocol: tcp
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      TZ: Asia/Jakarta
+    volumes:
+      - type: bind
+        source: /DATA/AppData/hotspot-voucher/logs
+        target: /app/logs
+      - type: bind
+        source: /DATA/AppData/hotspot-voucher/data
+        target: /app/data
+      - type: bind
+        source: /DATA/AppData/hotspot-voucher/config
+        target: /app/config
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# ✅ CASAOS METADATA
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: hotspot-voucher
+  description:
+    en_us: "🚀 Automated HotSpot Voucher System with MikroTik Integration - Complete solution for internet voucher sales with payment gateway and WhatsApp notifications"
+  tagline:
+    en_us: "Complete voucher automation system"
+  developer: "HotSpot Voucher Team"
+  author: "Nichiemaru"
+  icon: "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/mikrotik.png"
+  screenshot_link:
+    - "https://raw.githubusercontent.com/nichiemaru/hotspot-voucher-automator/main/screenshots/dashboard.png"
+    - "https://raw.githubusercontent.com/nichiemaru/hotspot-voucher-automator/main/screenshots/admin.png"
+  thumbnail: "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/mikrotik.png"
+  title:
+    en_us: "HotSpot Voucher Automator"
+  category: "Network"
+  port_map: "3001"
+  scheme: "http"
+  index: "/"
+  tips:
+    before_install:
+      en_us: |
+        🔧 **BEFORE INSTALLATION:**
+        
+        ✅ **Requirements:**
+        - CasaOS system with Docker support
+        - Available port 3001
+        - At least 512MB RAM
+        - 1GB free disk space
+        
+        📋 **What you'll get:**
+        - Web-based voucher management system
+        - Admin panel for configuration
+        - Health monitoring dashboard
+        - Ready for MikroTik integration
+        
+        🔑 **Default Access:**
+        - URL: http://your-casaos-ip:3001
+        - Admin: http://your-casaos-ip:3001/admin
+        - Username: admin
+        - Password: admin123
+        
+        ⚠️ **Note:** This is a demo version. For production use with database, payment gateway, and MikroTik integration, deploy the full version.
+    after_install:
+      en_us: |
+        🎉 **INSTALLATION COMPLETED!**
+        
+        📱 **Access your application:**
+        - Main page: Click "Open" button or go to http://your-ip:3001
+        - Admin panel: http://your-ip:3001/admin
+        
+        🔑 **Login credentials:**
+        - Username: admin
+        - Password: admin123
+        
+        📋 **Next steps:**
+        1. Access the admin panel
+        2. Configure MikroTik connection (production version)
+        3. Setup payment gateway (production version)
+        4. Test the system
+        
+        💡 **Need help?** Check the documentation or contact support.

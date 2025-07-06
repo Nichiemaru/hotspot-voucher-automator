@@ -1,78 +1,54 @@
 version: '3.8'
 
 services:
-  app:
-    build: 
-      context: .
-      dockerfile: Dockerfile
+  hotspot-voucher:
+    image: hotspot-voucher:latest
+    container_name: hotspot-voucher
+    restart: unless-stopped
     ports:
       - "3001:3001"
-      - "5173:5173"  # Frontend dev port
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://hotspot_user:hotspot_pass@db:5432/hotspot_voucher
-      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-      - FRONTEND_URL=http://localhost:3001
       - PORT=3001
-    depends_on:
-      db:
-        condition: service_healthy
+      - TZ=Asia/Jakarta
     volumes:
-      - ./logs:/app/logs
-      - app_data:/app/data
-    restart: unless-stopped
+      - /DATA/AppData/hotspot-voucher/logs:/app/logs
+      - /DATA/AppData/hotspot-voucher/data:/app/data
+      - /DATA/AppData/hotspot-voucher/config:/app/config
+    networks:
+      - hotspot-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    labels:
+      - "casaos.name=HotSpot Voucher"
+      - "casaos.icon=https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/mikrotik.png"
+      - "casaos.description=Automated HotSpot Voucher System"
+      - "casaos.main_port=3001"
+      - "casaos.category=Network"
 
-  db:
+  hotspot-db:
     image: postgres:15-alpine
+    container_name: hotspot-db
+    restart: unless-stopped
     environment:
       - POSTGRES_DB=hotspot_voucher
       - POSTGRES_USER=hotspot_user
-      - POSTGRES_PASSWORD=hotspot_pass
-      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+      - POSTGRES_PASSWORD=hotspot_pass_2024
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    ports:
-      - "5432:5432"
-    restart: unless-stopped
+      - /DATA/AppData/hotspot-voucher/postgres:/var/lib/postgresql/data
+    networks:
+      - hotspot-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hotspot_user -d hotspot_voucher"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-      - nginx_cache:/var/cache/nginx
-    depends_on:
-      - app
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-volumes:
-  postgres_data:
-    driver: local
-  app_data:
-    driver: local
-  nginx_cache:
-    driver: local
-
 networks:
-  default:
+  hotspot-network:
     driver: bridge
