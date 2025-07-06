@@ -1,0 +1,93 @@
+# ✅ KONFIGURASI CASAOS YANG BENAR
+name: hotspot-voucher-automator
+services:
+  hotspot-voucher:
+    image: hotspot-voucher:latest
+    container_name: hotspot-voucher
+    restart: unless-stopped
+    ports:
+      - target: 3001
+        published: 3001
+        protocol: tcp
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://hotspot_user:hotspot_pass@hotspot-db:5432/hotspot_voucher
+      JWT_SECRET: change-this-super-secret-key-in-production
+      FRONTEND_URL: http://localhost:3001
+    volumes:
+      - type: bind
+        source: /DATA/AppData/hotspot-voucher/logs
+        target: /app/logs
+      - type: bind
+        source: /DATA/AppData/hotspot-voucher/data
+        target: /app/data
+    networks:
+      - hotspot-network
+    depends_on:
+      - hotspot-db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  hotspot-db:
+    image: postgres:15-alpine
+    container_name: hotspot-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hotspot_voucher
+      POSTGRES_USER: hotspot_user
+      POSTGRES_PASSWORD: hotspot_pass
+    volumes:
+      - type: bind
+        source: /DATA/AppData/hotspot-voucher/postgres
+        target: /var/lib/postgresql/data
+    networks:
+      - hotspot-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hotspot_user -d hotspot_voucher"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  hotspot-network:
+    driver: bridge
+
+# ✅ CASAOS UI CONFIGURATION
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: hotspot-voucher
+  description:
+    en_us: "🚀 Automated HotSpot Voucher System with MikroTik Integration"
+  tagline:
+    en_us: "Complete voucher automation with payment gateway"
+  developer: "HotSpot Voucher Team"
+  author: "Nichiemaru"
+  icon: "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/mikrotik.png"
+  screenshot_link:
+    - "https://raw.githubusercontent.com/nichiemaru/hotspot-voucher-automator/main/screenshots/dashboard.png"
+    - "https://raw.githubusercontent.com/nichiemaru/hotspot-voucher-automator/main/screenshots/landing.png"
+  thumbnail: "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/mikrotik.png"
+  title:
+    en_us: "HotSpot Voucher Automator"
+  category: "Network"
+  port_map: "3001"
+  scheme: "http"
+  index: "/"
+  tips:
+    before_install:
+      en_us: |
+        🔧 **BEFORE INSTALLATION:**
+        1. Ensure you have MikroTik RouterOS with API enabled
+        2. Prepare TriPay merchant account for payment gateway
+        3. Setup WhatsApp gateway for voucher delivery
+        4. Make sure ports 3001 and 5432 are available
+        
+        📋 **DEFAULT CREDENTIALS:**
+        - Admin Username: admin
+        - Admin Password: admin123
+        - Access: http://your-ip:3001/admin
