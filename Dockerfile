@@ -15,9 +15,9 @@ WORKDIR /app
 
 # Create package.json
 RUN echo '{ \
-  "name": "hotspot-voucher-automator", \
-  "version": "2.0.1", \
-  "description": "Automated HotSpot Voucher System for CasaOS", \
+  "name": "hotspot-voucher-fresh", \
+  "version": "2.1.0", \
+  "description": "Fresh Install HotSpot Voucher System for CasaOS", \
   "main": "server.js", \
   "scripts": { \
     "start": "node server.js", \
