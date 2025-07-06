@@ -1,0 +1,27 @@
+{
+  "id": "hotspot-voucher-automator",
+  "author": "Nichiemaru",
+  "version": "1.0.0",
+  "category": "Network",
+  "icon": "https://raw.githubusercontent.com/Nichiemaru/hotspot-voucher-automator/main/icon.png",
+  "title": "Hotspot Voucher Automator",
+  "description": "Generate and manage Mikrotik hotspot vouchers automatically.",
+  "port_map": {
+    "8080": "8080"
+  },
+  "scheme": "http",
+  "index": "/",
+  "env": [],
+  "image": "nichiemaru/hotspot-voucher-automator:latest",
+  "restart_policy": "always",
+  "run": {
+    "type": "docker_run",
+    "cmd": [
+      "--name",
+      "hotspot-voucher-automator",
+      "-p",
+      "8080:8080"
+    ]
+  },
+  "support_url": "https://github.com/Nichiemaru/hotspot-voucher-automator"
+}
