@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  hotspot-voucher:
+  hotspot-voucher-v2:
     build: 
       context: .
       dockerfile: Dockerfile
-    container_name: hotspot-voucher
+    container_name: hotspot-voucher-v2
     restart: unless-stopped
     ports:
       - "3001:3001"
@@ -14,11 +14,11 @@ services:
       - PORT=3001
       - TZ=Asia/Jakarta
     volumes:
-      - /DATA/AppData/hotspot-voucher/logs:/app/logs
-      - /DATA/AppData/hotspot-voucher/data:/app/data
-      - /DATA/AppData/hotspot-voucher/config:/app/config
+      - /DATA/AppData/hotspot-voucher-v2/logs:/app/logs
+      - /DATA/AppData/hotspot-voucher-v2/data:/app/data
+      - /DATA/AppData/hotspot-voucher-v2/config:/app/config
     networks:
-      - hotspot-network
+      - hotspot-network-v2
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s
@@ -26,13 +26,13 @@ services:
       retries: 3
       start_period: 40s
     labels:
-      - "casaos.name=HotSpot Voucher"
+      - "casaos.name=HotSpot Voucher v2"
       - "casaos.icon=https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/mikrotik.png"
       - "casaos.description=Automated HotSpot Voucher System v2.0.1"
       - "casaos.main_port=3001"
       - "casaos.category=Network"
       - "casaos.developer=Nichiemaru"
-      - "casaos.project_url=https://github.com/nichiemaru/hotspot-voucher-automator"
+      - "casaos.version=2.0.1"
 
   hotspot-db:
     image: postgres:15-alpine
@@ -46,7 +46,7 @@ services:
     volumes:
       - /DATA/AppData/hotspot-voucher/postgres:/var/lib/postgresql/data
     networks:
-      - hotspot-network
+      - hotspot-network-v2
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hotspot_user -d hotspot_voucher"]
       interval: 10s
@@ -54,6 +54,6 @@ services:
       retries: 5
 
 networks:
-  hotspot-network:
+  hotspot-network-v2:
     driver: bridge
-    name: hotspot-network
+    name: hotspot-network-v2

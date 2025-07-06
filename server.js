@@ -1,105 +1,38 @@
-#!/bin/bash
+const express = require("express")
+const cors = require("cors")
+const helmet = require("helmet")
+const compression = require("compression")
 
-# ✅ SCRIPT CLEANUP DAN INSTALL LENGKAP UNTUK CASAOS
-set -e
-
-echo "🧹 Starting complete cleanup and fresh installation..."
-
-# Function to print colored output
-print_status() {
-    echo -e "\033[1;34m[INFO]\033[0m $1"
-}
-
-print_success() {
-    echo -e "\033[1;32m[SUCCESS]\033[0m $1"
-}
-
-print_error() {
-    echo -e "\033[1;31m[ERROR]\033[0m $1"
-}
-
-print_warning() {
-    echo -e "\033[1;33m[WARNING]\033[0m $1"
-}
-
-# 1. STOP DAN REMOVE SEMUA CONTAINER HOTSPOT
-print_status "Stopping and removing existing containers..."
-docker stop hotspot-voucher hotspot-db postgres 2>/dev/null || true
-docker rm hotspot-voucher hotspot-db postgres 2>/dev/null || true
-
-# 2. REMOVE NETWORKS
-print_status "Removing existing networks..."
-docker network rm hotspot-network hotspot-install_hotspot-network hotspot_default 2>/dev/null || true
-
-# 3. REMOVE IMAGES LAMA
-print_status "Removing old images..."
-docker rmi hotspot-voucher:latest hotspot-install_hotspot-voucher 2>/dev/null || true
-
-# 4. CLEAN DOCKER SYSTEM
-print_status "Cleaning Docker system..."
-docker system prune -f
-
-# 5. REMOVE CASAOS APP REGISTRATION (INI YANG PENTING!)
-print_status "Removing CasaOS app registration..."
-sudo rm -rf /var/lib/casaos/apps/hotspot-voucher* 2>/dev/null || true
-sudo rm -rf /etc/casaos/apps/hotspot-voucher* 2>/dev/null || true
-sudo rm -rf /DATA/AppData/casaos/apps/hotspot-voucher* 2>/dev/null || true
-
-# 6. RESTART CASAOS SERVICE
-print_status "Restarting CasaOS services..."
-sudo systemctl restart casaos 2>/dev/null || true
-sudo systemctl restart casaos-gateway 2>/dev/null || true
-
-# Wait for CasaOS to restart
-sleep 5
-
-# 7. CREATE FRESH DIRECTORIES
-print_status "Creating fresh application directories..."
-sudo mkdir -p /DATA/AppData/hotspot-voucher-v2/{logs,data,config,postgres}
-sudo chmod -R 755 /DATA/AppData/hotspot-voucher-v2
-sudo chown -R $USER:$USER /DATA/AppData/hotspot-voucher-v2 2>/dev/null || true
-
-# 8. CREATE TEMPORARY BUILD DIRECTORY
-TEMP_DIR=$(mktemp -d)
-cd $TEMP_DIR
-
-print_status "Creating application files in $TEMP_DIR..."
-
-# 9. CREATE SERVER.JS
-cat > server.js << 'EOF'
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const compression = require('compression');
-
-const app = express();
-const PORT = process.env.PORT || 3001;
+const app = express()
+const PORT = process.env.PORT || 3001
 
 // Middleware
-app.use(helmet({ 
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false 
-}));
-app.use(cors());
-app.use(compression());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }),
+)
+app.use(cors())
+app.use(compression())
+app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   res.json({
-    status: 'OK',
+    status: "OK",
     timestamp: new Date().toISOString(),
-    version: '2.0.1',
+    version: "2.0.1",
     uptime: process.uptime(),
-    platform: 'CasaOS',
+    platform: "CasaOS",
     memory: process.memoryUsage(),
-    pid: process.pid
-  });
-});
+    pid: process.pid,
+  })
+})
 
 // Main page with enhanced UI
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html lang="id">
@@ -364,11 +297,11 @@ app.get('/', (req, res) => {
       </div>
     </body>
     </html>
-  `);
-});
+  `)
+})
 
 // Enhanced admin panel
-app.get('/admin', (req, res) => {
+app.get("/admin", (req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html lang="id">
@@ -711,21 +644,21 @@ app.get('/admin', (req, res) => {
       </script>
     </body>
     </html>
-  `);
-});
+  `)
+})
 
 // Configuration API endpoint
-app.get('/config', (req, res) => {
+app.get("/config", (req, res) => {
   res.json({
     application: {
-      name: 'HotSpot Voucher Automator',
-      version: '2.0.1',
-      mode: 'casaos-demo',
-      platform: 'CasaOS',
+      name: "HotSpot Voucher Automator",
+      version: "2.0.1",
+      mode: "casaos-demo",
+      platform: "CasaOS",
       runtime: process.version,
       architecture: process.arch,
       pid: process.pid,
-      uptime: process.uptime()
+      uptime: process.uptime(),
     },
     features: {
       web_interface: true,
@@ -735,257 +668,64 @@ app.get('/config', (req, res) => {
       database: false,
       mikrotik_integration: false,
       payment_gateway: false,
-      whatsapp_gateway: false
+      whatsapp_gateway: false,
     },
     status: {
-      web_server: 'online',
-      database: 'demo_mode',
-      mikrotik: 'not_configured',
-      whatsapp: 'not_configured',
-      payment: 'not_configured'
+      web_server: "online",
+      database: "demo_mode",
+      mikrotik: "not_configured",
+      whatsapp: "not_configured",
+      payment: "not_configured",
     },
-    message: 'Running in CasaOS demo mode - Deploy production version for full features',
+    message: "Running in CasaOS demo mode - Deploy production version for full features",
     support: {
-      github: 'https://github.com/nichiemaru/hotspot-voucher-automator',
-      issues: 'https://github.com/nichiemaru/hotspot-voucher-automator/issues',
-      documentation: 'https://github.com/nichiemaru/hotspot-voucher-automator/wiki'
-    }
-  });
-});
+      github: "https://github.com/nichiemaru/hotspot-voucher-automator",
+      issues: "https://github.com/nichiemaru/hotspot-voucher-automator/issues",
+      documentation: "https://github.com/nichiemaru/hotspot-voucher-automator/wiki",
+    },
+  })
+})
 
 // API status endpoint
-app.get('/api/status', (req, res) => {
+app.get("/api/status", (req, res) => {
   res.json({
-    status: 'OK',
+    status: "OK",
     timestamp: new Date().toISOString(),
-    version: '2.0.1',
-    platform: 'CasaOS',
+    version: "2.0.1",
+    platform: "CasaOS",
     uptime: process.uptime(),
     memory: process.memoryUsage(),
     pid: process.pid,
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
+    environment: process.env.NODE_ENV || "development",
+  })
+})
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Error:', err.stack);
-  res.status(500).json({ 
-    error: 'Internal Server Error',
+  console.error("Error:", err.stack)
+  res.status(500).json({
+    error: "Internal Server Error",
     message: err.message,
-    timestamp: new Date().toISOString()
-  });
-});
+    timestamp: new Date().toISOString(),
+  })
+})
 
 // 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ 
-    error: 'Route not found',
+app.use("*", (req, res) => {
+  res.status(404).json({
+    error: "Route not found",
     path: req.originalUrl,
-    timestamp: new Date().toISOString()
-  });
-});
+    timestamp: new Date().toISOString(),
+  })
+})
 
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 HotSpot Voucher Automator v2.0.1 running on port ${PORT}`);
-  console.log(`📱 Main: http://localhost:${PORT}`);
-  console.log(`🔧 Admin: http://localhost:${PORT}/admin`);
-  console.log(`📊 Health: http://localhost:${PORT}/health`);
-  console.log(`⚙️ Config: http://localhost:${PORT}/config`);
-  console.log(`🏠 Platform: CasaOS`);
-  console.log(`🕐 Started: ${new Date().toISOString()}`);
-});
-EOF
-
-# 10. CREATE DOCKERFILE
-cat > Dockerfile << 'EOF'
-FROM node:18-alpine
-
-# Install system dependencies
-RUN apk add --no-cache \
-    curl \
-    wget \
-    bash \
-    tzdata \
-    && rm -rf /var/cache/apk/*
-
-# Set timezone
-ENV TZ=Asia/Jakarta
-
-WORKDIR /app
-
-# Create package.json
-RUN echo '{ \
-  "name": "hotspot-voucher-automator", \
-  "version": "2.0.1", \
-  "description": "Automated HotSpot Voucher System for CasaOS", \
-  "main": "server.js", \
-  "scripts": { \
-    "start": "node server.js", \
-    "health": "wget --spider -q http://localhost:3001/health || exit 1" \
-  }, \
-  "dependencies": { \
-    "express": "4.18.2", \
-    "cors": "2.8.5", \
-    "helmet": "7.1.0", \
-    "compression": "1.7.4" \
-  }, \
-  "engines": { \
-    "node": ">=18.0.0" \
-  } \
-}' > package.json
-
-# Install dependencies
-RUN npm install --production --silent --no-audit --no-fund
-
-# Copy server file
-COPY server.js .
-
-# Create directories and user
-RUN mkdir -p logs data config uploads && \
-    addgroup -g 1001 -S nodejs && \
-    adduser -S hotspot -u 1001 -G nodejs && \
-    chown -R hotspot:nodejs /app
-
-USER hotspot
-
-EXPOSE 3001
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
-
-CMD ["node", "server.js"]
-EOF
-
-# 11. CREATE DOCKER-COMPOSE.YML
-cat > docker-compose.yml << 'EOF'
-version: '3.8'
-
-services:
-  hotspot-voucher-v2:
-    build: 
-      context: .
-      dockerfile: Dockerfile
-    container_name: hotspot-voucher-v2
-    restart: unless-stopped
-    ports:
-      - "3001:3001"
-    environment:
-      - NODE_ENV=production
-      - PORT=3001
-      - TZ=Asia/Jakarta
-    volumes:
-      - /DATA/AppData/hotspot-voucher-v2/logs:/app/logs
-      - /DATA/AppData/hotspot-voucher-v2/data:/app/data
-      - /DATA/AppData/hotspot-voucher-v2/config:/app/config
-    networks:
-      - hotspot-network-v2
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    labels:
-      - "casaos.name=HotSpot Voucher v2"
-      - "casaos.icon=https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/mikrotik.png"
-      - "casaos.description=Automated HotSpot Voucher System v2.0.1"
-      - "casaos.main_port=3001"
-      - "casaos.category=Network"
-      - "casaos.developer=Nichiemaru"
-      - "casaos.version=2.0.1"
-
-networks:
-  hotspot-network-v2:
-    driver: bridge
-    name: hotspot-network-v2
-EOF
-
-# 12. BUILD DAN START APPLICATION
-print_status "Building Docker image..."
-docker build -t hotspot-voucher-v2:latest . || {
-    print_error "Build failed. Trying alternative approach..."
-    
-    # Create simpler Dockerfile as fallback
-    cat > Dockerfile << 'EOF'
-FROM node:18-alpine
-RUN apk add --no-cache curl wget bash
-WORKDIR /app
-RUN npm init -y && npm install express@4.18.2 cors@2.8.5 helmet@7.1.0 compression@1.7.4 --silent
-COPY server.js .
-RUN adduser -D hotspot && chown -R hotspot:hotspot /app
-USER hotspot
-EXPOSE 3001
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD wget -q --spider http://localhost:3001/health
-CMD ["node", "server.js"]
-EOF
-    
-    docker build -t hotspot-voucher-v2:latest .
-}
-
-print_status "Starting application..."
-docker-compose up -d
-
-print_status "Waiting for application to start..."
-sleep 20
-
-# 13. VERIFY APPLICATION
-print_status "Verifying application health..."
-for i in {1..15}; do
-    if curl -f http://localhost:3001/health &>/dev/null; then
-        print_success "✅ Application is running successfully!"
-        break
-    else
-        print_warning "⏳ Waiting for application... (attempt $i/15)"
-        sleep 3
-    fi
-    
-    if [ $i -eq 15 ]; then
-        print_error "❌ Application failed to start properly"
-        print_status "Checking logs..."
-        docker logs hotspot-voucher-v2 --tail 20
-        exit 1
-    fi
-done
-
-# 14. FINAL VERIFICATION
-print_status "Running final verification..."
-HEALTH_CHECK=$(curl -s http://localhost:3001/health | grep -o '"status":"OK"' || echo "failed")
-if [ "$HEALTH_CHECK" = '"status":"OK"' ]; then
-    print_success "✅ Health check passed!"
-else
-    print_warning "⚠️ Health check failed, but container is running"
-fi
-
-# 15. CLEANUP TEMP DIRECTORY
-cd /
-rm -rf $TEMP_DIR
-
-# 16. FINAL RESTART CASAOS (IMPORTANT!)
-print_status "Final CasaOS restart to register new app..."
-sudo systemctl restart casaos 2>/dev/null || true
-sleep 5
-
-print_success ""
-print_success "🎉 HotSpot Voucher Automator v2.0.1 installed successfully!"
-print_success ""
-print_success "📱 Access URLs:"
-print_success "   🌐 Main: http://localhost:3001"
-print_success "   🔧 Admin: http://localhost:3001/admin"
-print_success "   📊 Health: http://localhost:3001/health"
-print_success "   ⚙️ Config: http://localhost:3001/config"
-print_success ""
-print_success "🔑 Default Credentials:"
-print_success "   Username: admin"
-print_success "   Password: admin123"
-print_success ""
-print_success "📋 Next Steps:"
-print_success "   1. Refresh your CasaOS interface"
-print_success "   2. Look for 'HotSpot Voucher v2' in your apps"
-print_success "   3. Access the admin panel to explore features"
-print_success "   4. For production deployment, contact support"
-print_success ""
-print_success "✅ The app should now appear NORMALLY in CasaOS (not as legacy)!"
-print_success "🔄 If still showing as legacy, restart CasaOS: sudo systemctl restart casaos"
-EOF
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 HotSpot Voucher Automator v2.0.1 running on port ${PORT}`)
+  console.log(`📱 Main: http://localhost:${PORT}`)
+  console.log(`🔧 Admin: http://localhost:${PORT}/admin`)
+  console.log(`📊 Health: http://localhost:${PORT}/health`)
+  console.log(`⚙️ Config: http://localhost:${PORT}/config`)
+  console.log(`🏠 Platform: CasaOS`)
+  console.log(`🕐 Started: ${new Date().toISOString()}`)
+})

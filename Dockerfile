@@ -13,7 +13,7 @@ ENV TZ=Asia/Jakarta
 
 WORKDIR /app
 
-# Create package.json with exact versions
+# Create package.json
 RUN echo '{ \
   "name": "hotspot-voucher-automator", \
   "version": "2.0.1", \
@@ -37,10 +37,10 @@ RUN echo '{ \
 # Install dependencies
 RUN npm install --production --silent --no-audit --no-fund
 
-# Create application server
+# Copy server file
 COPY server.js .
 
-# Create directories and set permissions
+# Create directories and user
 RUN mkdir -p logs data config uploads && \
     addgroup -g 1001 -S nodejs && \
     adduser -S hotspot -u 1001 -G nodejs && \

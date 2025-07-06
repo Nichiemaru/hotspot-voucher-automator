@@ -1,29 +1,29 @@
-name: hotspot-voucher-automator
+name: hotspot-voucher-v2
 services:
-  hotspot-voucher:
-    image: hotspot-voucher:latest
-    container_name: hotspot-voucher
+  hotspot-voucher-v2:
+    image: hotspot-voucher-v2:latest
+    container_name: hotspot-voucher-v2
     restart: unless-stopped
     ports:
       - target: 3001
-        published: "3001"
+        published: 3001
         protocol: tcp
     environment:
       NODE_ENV: production
-      PORT: "3001"
+      PORT: 3001
       TZ: Asia/Jakarta
     volumes:
       - type: bind
-        source: /DATA/AppData/hotspot-voucher/logs
+        source: /DATA/AppData/hotspot-voucher-v2/logs
         target: /app/logs
       - type: bind
-        source: /DATA/AppData/hotspot-voucher/data
+        source: /DATA/AppData/hotspot-voucher-v2/data
         target: /app/data
       - type: bind
-        source: /DATA/AppData/hotspot-voucher/config
+        source: /DATA/AppData/hotspot-voucher-v2/config
         target: /app/config
     networks:
-      - hotspot-network
+      - hotspot-network-v2
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s
@@ -31,37 +31,67 @@ services:
       retries: 3
       start_period: 40s
     labels:
-      casaos.name: "HotSpot Voucher"
+      casaos.name: "HotSpot Voucher v2"
       casaos.icon: "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/mikrotik.png"
       casaos.description: "Automated HotSpot Voucher System v2.0.1"
       casaos.main_port: "3001"
       casaos.category: "Network"
       casaos.developer: "Nichiemaru"
-      casaos.project_url: "https://github.com/nichiemaru/hotspot-voucher-automator"
+      casaos.version: "2.0.1"
 
 networks:
-  hotspot-network:
+  hotspot-network-v2:
     driver: bridge
-    name: hotspot-network
+    name: hotspot-network-v2
 
 x-casaos:
   architectures:
     - amd64
     - arm64
-  main: hotspot-voucher
+  main: hotspot-voucher-v2
   description:
-    en_us: "Automated HotSpot Voucher System with MikroTik integration, payment gateway, and WhatsApp notifications. Perfect for internet cafes and hotspot providers."
+    en_us: "Automated HotSpot Voucher System with MikroTik integration, payment gateway, and WhatsApp notifications. Perfect for hotspot business automation."
+    id_id: "Sistem Otomatis Voucher HotSpot dengan integrasi MikroTik, payment gateway, dan notifikasi WhatsApp. Sempurna untuk otomasi bisnis hotspot."
   tagline:
-    en_us: "Complete voucher automation solution"
+    en_us: "Complete HotSpot Voucher Automation Solution"
+    id_id: "Solusi Lengkap Otomasi Voucher HotSpot"
   developer: "Nichiemaru"
   author: "Nichiemaru"
   icon: "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/mikrotik.png"
   screenshot_link:
-    - "https://raw.githubusercontent.com/nichiemaru/hotspot-voucher-automator/main/screenshots/dashboard.png"
+    - "https://raw.githubusercontent.com/nichiemaru/hotspot-voucher-automator/main/screenshots/main.png"
     - "https://raw.githubusercontent.com/nichiemaru/hotspot-voucher-automator/main/screenshots/admin.png"
   thumbnail: "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/mikrotik.png"
   title:
-    en_us: "HotSpot Voucher Automator"
+    en_us: "HotSpot Voucher Automator v2"
+    id_id: "HotSpot Voucher Automator v2"
   category: "Network"
-  project_url: "https://github.com/nichiemaru/hotspot-voucher-automator"
   port_map: "3001"
+  scheme: "http"
+  index: "/"
+  tips:
+    before_install:
+      en_us: |
+        This is the CasaOS demo version. For full production features including:
+        - PostgreSQL Database
+        - MikroTik RouterOS Integration  
+        - TriPay Payment Gateway
+        - WhatsApp Gateway Integration
+        
+        Please contact support for production deployment.
+        
+        Demo Credentials:
+        Username: admin
+        Password: admin123
+      id_id: |
+        Ini adalah versi demo CasaOS. Untuk fitur production lengkap termasuk:
+        - Database PostgreSQL
+        - Integrasi MikroTik RouterOS
+        - Payment Gateway TriPay
+        - Integrasi WhatsApp Gateway
+        
+        Silakan hubungi support untuk deployment production.
+        
+        Kredensial Demo:
+        Username: admin
+        Password: admin123
