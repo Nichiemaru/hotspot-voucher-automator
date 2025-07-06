@@ -1,57 +1,59 @@
-# ✅ MULTI-STAGE BUILD untuk optimasi ukuran
-FROM node:18-alpine AS builder
+# ✅ DOCKERFILE YANG DIPERBAIKI - MULTI-STAGE BUILD
+FROM node:18-alpine AS base
+
+# Install dependencies yang diperlukan
+RUN apk add --no-cache \
+    curl \
+    bash \
+    git \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
-# ✅ Copy package files terlebih dahulu untuk caching
+# ✅ STAGE 1: Dependencies
+FROM base AS deps
 COPY package*.json ./
-COPY tsconfig*.json ./
-COPY vite.config.ts ./
-COPY tailwind.config.ts ./
-COPY postcss.config.js ./
+RUN npm ci --only=production --silent --no-audit --no-fund
 
-# ✅ Install dependencies dengan cache mounting
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --only=production --silent
+# ✅ STAGE 2: Build
+FROM base AS builder
+COPY package*.json ./
+RUN npm ci --silent --no-audit --no-fund
 
-# ✅ Copy source code
-COPY src/ ./src/
-COPY public/ ./public/
-COPY index.html ./
-COPY components.json ./
-
-# ✅ Build aplikasi
+# Copy source files
+COPY . .
 RUN npm run build
 
-# ✅ PRODUCTION STAGE
-FROM node:18-alpine AS production
+# ✅ STAGE 3: Production
+FROM node:18-alpine AS runner
 
-# ✅ Install curl untuk health check
-RUN apk add --no-cache curl
+# Install runtime dependencies
+RUN apk add --no-cache curl bash
 
 WORKDIR /app
 
-# ✅ Copy built application
+# Create user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy built application
+COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 
-# ✅ Create necessary directories
-RUN mkdir -p logs data uploads
-
-# ✅ Create non-root user untuk security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001 && \
+# Create directories
+RUN mkdir -p logs data uploads && \
     chown -R nextjs:nodejs /app
 
 USER nextjs
 
-# ✅ Expose port
 EXPOSE 3001
 
-# ✅ Health check yang robust
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:3001/health || exit 1
 
-# ✅ Start command dengan proper signal handling
 CMD ["node", "dist/server.js"]

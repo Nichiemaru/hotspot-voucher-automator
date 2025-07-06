@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  hotspot-voucher:
+    build: .
+    container_name: hotspot-voucher
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    volumes:
+      - /DATA/AppData/hotspot-voucher/logs:/app/logs:rw
+      - /DATA/AppData/hotspot-voucher/data:/app/data:rw
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  default:
+    driver: bridge
