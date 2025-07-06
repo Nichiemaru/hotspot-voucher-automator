@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   hotspot-voucher:
-    image: hotspot-voucher:latest
+    build: 
+      context: .
+      dockerfile: Dockerfile
     container_name: hotspot-voucher
     restart: unless-stopped
     ports:
@@ -26,9 +28,11 @@ services:
     labels:
       - "casaos.name=HotSpot Voucher"
       - "casaos.icon=https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/mikrotik.png"
-      - "casaos.description=Automated HotSpot Voucher System"
+      - "casaos.description=Automated HotSpot Voucher System v2.0.1"
       - "casaos.main_port=3001"
       - "casaos.category=Network"
+      - "casaos.developer=Nichiemaru"
+      - "casaos.project_url=https://github.com/nichiemaru/hotspot-voucher-automator"
 
   hotspot-db:
     image: postgres:15-alpine
@@ -52,3 +56,4 @@ services:
 networks:
   hotspot-network:
     driver: bridge
+    name: hotspot-network
